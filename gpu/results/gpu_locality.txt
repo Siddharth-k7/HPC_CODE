@@ -1,0 +1,10 @@
+GPU: NVIDIA RTX 4000 Ada Generation  (48 SMs, 21.0 GB VRAM)
+
+-- experiment 1: data placement (like coarse / first-touch / locality-aware) --
+explicit     n=64000000  setup= 135.982 ms  prefetch=   0.002 ms  kernel=   1.833 ms  total= 137.817 ms  1.86 GB/s
+first-touch  n=64000000  setup=  87.981 ms  prefetch=   0.003 ms  kernel=  36.043 ms  total= 124.027 ms  2.06 GB/s
+prefetched   n=64000000  setup=  92.737 ms  prefetch=  14.363 ms  kernel=   1.658 ms  total= 108.757 ms  2.35 GB/s
+
+-- experiment 2: scheduling across streams (like work-stealing vs. locality-aware) --
+one-queue    tasks= 48 streams=1   11.782 ms
+many-queues  tasks= 48 streams=8   10.668 ms
