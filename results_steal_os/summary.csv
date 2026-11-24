@@ -1,0 +1,7 @@
+bench,config,sched,dist,ok,rc,roi_cycles,sim_seconds,remote_steals,local_steals,dealt_remote,avg_miss_latency,avg_latency,pages,wall_seconds
+jacobi,la-fine,locality,fine,True,0,82531112,0.039285,0,0,0,349.557236,1.559047, node0=644 node1=264 node2=264 node3=264 node4=264 node5=264 node6=264 node7=264,238.2
+jacobi,la-coarse,locality,coarse,True,0,78857277,0.037536,0,0,64,241.68932,1.394236, node0=1412 node1=1038 node2=8 node3=8 node4=8 node5=8 node6=8 node7=8,234.2
+matmul,la-fine,locality,fine,True,0,284361666,0.135356,0,0,0,352.226053,1.097195, node0=580 node1=200 node2=200 node3=8 node4=8 node5=8 node6=8 node7=8,626.4
+matmul,la-coarse,locality,coarse,True,0,51661201,0.024591,0,0,56,201.776302,1.047883, node0=460 node1=86 node2=86 node3=86 node4=86 node5=86 node6=86 node7=86,715.6
+sparselu,la-fine,locality,fine,True,0,73671383,0.035068,0,0,0,734.442745,1.761612, node0=532 node1=8 node2=8 node3=8 node4=8 node5=8 node6=8 node7=8,176.5
+sparselu,la-coarse,locality,coarse,True,0,75069791,0.035733,0,0,0,770.829509,1.787939, node0=406 node1=26 node2=26 node3=26 node4=26 node5=26 node6=26 node7=26,179.3

@@ -1,0 +1,25 @@
+== latency probe (about a minute)
+NUMA machine: 8 nodes x 6 cores = 48 cores
+numa_rt: 1 threads, 8 nodes x 6 cores, sched=ws, dist=standard, LLC/node=384 KiB, steal-distance=hops, gem5
+latency: from node 0, buffer 1024 KiB, 5000 loads per node
+node 0 (page on node 0, distance 10): 151.0 cycles/load
+node 1 (page on node 1, distance 16): 243.4 cycles/load
+node 2 (page on node 2, distance 16): 243.3 cycles/load
+node 3 (page on node 3, distance 22): 335.2 cycles/load
+node 4 (page on node 4, distance 16): 243.3 cycles/load
+node 5 (page on node 5, distance 22): 335.4 cycles/load
+node 6 (page on node 6, distance 16): 244.0 cycles/load
+node 7 (page on node 7, distance 22): 335.2 cycles/load
+tasks per node: n0=0 n1=0 n2=0 n3=0 n4=0 n5=0 n6=0 n7=0
+Exiting @ tick 27173968444 because exiting with last active thread context
+
+== map, 48 cores, locality-aware + coarse
+numa_rt: 48 threads, 8 nodes x 6 cores, sched=locality, dist=coarse, LLC/node=384 KiB, steal-distance=hops, gem5
+map: 48 vectors x 128 KiB, reps=1
+placement vector0   : n0=32 n1=0 n2=0 n3=0 n4=0 n5=0 n6=0 n7=0  (pages)
+placement vector1   : n0=0 n1=32 n2=0 n3=0 n4=0 n5=0 n6=0 n7=0  (pages)
+ROI cycles: 1274058
+map: result OK
+numa_rt stats: tasks=48 own=48 local_steals=0 remote_steals=0 | dealt_local=6 dealt_remote=42 analysed=48 | busy_cycles=39243762 roi_cycles=1274058
+tasks per node: n0=6 n1=6 n2=6 n3=6 n4=6 n5=6 n6=6 n7=6
+Exiting @ tick 48147736056 because exiting with last active thread context

@@ -1,0 +1,60 @@
+Could not find platform dependent libraries <exec_prefix>
+gem5 Simulator System.  https://www.gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 version 26.0.0.0
+gem5 compiled Nov 23 2026 00:45:35
+gem5 started Nov 23 2026 00:52:26
+gem5 executing on vm, pid 26334
+command line: /home/claude/ext/gem5/build/X86_MOESI_hammer/gem5.opt -d results/quick/latency gem5-config/numa_machine.py --cmd bin/latency '--options=-s 1024 -l 3000' --env results/quick/env_lat.txt
+
+info: Standard input is not a terminal, disabling listeners.
+NUMA machine: 8 nodes x 6 cores = 48 cores
+Node distance table (10 + 6*hops):
+        0   1   2   3   4   5   6   7
+   0:  10  16  16  22  16  22  16  22
+   1:  16  10  22  16  22  16  22  16
+   2:  16  22  10  16  16  22  16  22
+   3:  22  16  16  10  22  16  22  16
+   4:  16  22  16  22  10  16  16  22
+   5:  22  16  22  16  16  10  22  16
+   6:  16  22  16  22  16  22  10  16
+   7:  22  16  22  16  22  16  16  10
+Global frequency set at 1000000000000 ticks per second
+warn: No dot file generated. Please install pydot to generate the dot file and pdf.
+src/mem/dram_interface.cc:691: warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (256 Mbytes)
+src/mem/dram_interface.cc:691: warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (256 Mbytes)
+src/mem/dram_interface.cc:691: warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (256 Mbytes)
+src/mem/dram_interface.cc:691: warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (256 Mbytes)
+src/mem/dram_interface.cc:691: warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (256 Mbytes)
+src/mem/dram_interface.cc:691: warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (256 Mbytes)
+src/mem/dram_interface.cc:691: warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (256 Mbytes)
+src/mem/dram_interface.cc:691: warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (256 Mbytes)
+src/base/statistics.hh:279: warn: One of the stats is a legacy stat. Legacy stat is a stat that does not belong to any statistics::Group. Legacy stat is deprecated.
+src/base/statistics.hh:279: warn: One of the stats is a legacy stat. Legacy stat is a stat that does not belong to any statistics::Group. Legacy stat is deprecated.
+src/base/remote_gdb.cc:418: warn: Sockets disabled, not accepting gdb connections
+Starting simulation ...
+src/mem/ruby/system/Sequencer.cc:750: warn: Replacement policy updates recently became the responsibility of SLICC state machines. Make sure to setMRU() near callbacks in .sm files!
+src/sim/syscall_emul.cc:87: warn: ignoring syscall set_robust_list(...)
+src/sim/syscall_emul.cc:87: warn: ignoring syscall rseq(...)
+src/sim/mem_state.cc:443: info: Increasing stack size by one page.
+src/sim/syscall_emul.cc:87: warn: ignoring syscall mprotect(...)
+numa_rt: 1 threads, 8 nodes x 6 cores, sched=ws, dist=standard, LLC/node=384 KiB, steal-distance=hops, gem5
+latency: from node 0, buffer 1024 KiB, 3000 loads per node
+node 0 (page on node 0, distance 10): 150.7 cycles/load
+node 1 (page on node 1, distance 16): 242.9 cycles/load
+node 2 (page on node 2, distance 16): 243.2 cycles/load
+node 3 (page on node 3, distance 22): 335.4 cycles/load
+node 4 (page on node 4, distance 16): 243.3 cycles/load
+node 5 (page on node 5, distance 22): 335.4 cycles/load
+node 6 (page on node 6, distance 16): 243.3 cycles/load
+node 7 (page on node 7, distance 22): 335.3 cycles/load
+ROI cycles: 47050374
+numa_rt stats: tasks=0 own=0 local_steals=0 remote_steals=0 | dealt_local=0 dealt_remote=0 analysed=0 | busy_cycles=0 roi_cycles=47050374
+tasks per node: n0=0 n1=0 n2=0 n3=0 n4=0 n5=0 n6=0 n7=0
+src/sim/process.cc:467: info: NUMA pages placed: node0=562 node1=257 node2=257 node3=257 node4=257 node5=257 node6=257 node7=257
+Exiting @ tick 25153055704 because exiting with last active thread context
+
+real	0m21.258s
+user	0m20.535s
+sys	0m0.575s

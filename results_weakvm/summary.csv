@@ -1,0 +1,8 @@
+bench,config,sched,dist,ok,rc,roi_cycles,sim_seconds,remote_steals,local_steals,dealt_remote,avg_miss_latency,avg_latency,pages,wall_seconds
+map,ws-numactl,ws,standard,True,0,1596234,0.00076,42,5,0,318.223584,3.269448, node0=530 node1=213 node2=212 node3=213 node4=213 node5=213 node6=211 node7=212,164.9
+map,ws-standard,ws,standard,True,0,3436436,0.001636,42,5,0,704.897996,6.10855, node0=1919 node1=14 node2=14 node3=14 node4=14 node5=14 node6=14 node7=14,155.7
+map,ws-fine,ws,fine,True,0,1678590,0.000799,42,5,0,335.992328,3.446109, node0=575 node1=206 node2=206 node3=206 node4=206 node5=206 node6=206 node7=206,161.7
+map,ws-coarse,ws,coarse,True,0,1763211,0.000839,42,5,0,362.059292,3.634658, node0=575 node1=206 node2=206 node3=206 node4=206 node5=206 node6=206 node7=206,160.7
+map,la-fine,locality,fine,True,0,2215739,0.001055,41,0,0,310.63394,3.188856, node0=575 node1=206 node2=206 node3=205 node4=206 node5=206 node6=206 node7=206,162.1
+map,la-coarse,locality,coarse,True,0,1289191,0.000614,0,0,42,159.914395,2.144141, node0=575 node1=206 node2=206 node3=206 node4=206 node5=206 node6=206 node7=206,161.8
+map,la-standard,locality,standard,True,0,3684344,0.001754,42,0,0,767.966145,6.50918, node0=1919 node1=14 node2=14 node3=14 node4=14 node5=14 node6=14 node7=14,146.5

@@ -1,0 +1,6 @@
+bench,config,sched,dist,ok,rc,roi_cycles,sim_seconds,remote_steals,local_steals,dealt_remote,avg_miss_latency,avg_latency,pages,wall_seconds
+jacobi,ws-numactl,ws,standard,True,0,167762122,0.079855,1786,220,0,234.300274,1.363075, node0=4443 node1=4126 node2=4126 node3=4127 node4=4127 node5=4127 node6=4125 node7=4125,4423.0
+jacobi,ws-fine,ws,fine,True,0,167537639,0.079748,1786,220,0,231.158033,1.35827, node0=4556 node1=4110 node2=4110 node3=4110 node4=4110 node5=4110 node6=4110 node7=4110,4387.6
+jacobi,ws-coarse,ws,coarse,True,0,172285038,0.082008,1778,226,0,267.910707,1.415738, node0=16844 node1=16398 node2=14 node3=14 node4=14 node5=14 node6=14 node7=14,4304.9
+jacobi,la-fine,locality,fine,True,0,173484882,0.082579,1778,0,0,229.020804,1.348711, node0=4554 node1=4110 node2=4110 node3=4110 node4=4110 node5=4110 node6=4110 node7=4110,4331.5
+jacobi,la-coarse,locality,coarse,True,0,178583778,0.085006,1763,0,1024,264.522202,1.403483, node0=16844 node1=16398 node2=14 node3=14 node4=14 node5=14 node6=14 node7=14,4344.8

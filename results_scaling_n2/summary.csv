@@ -1,0 +1,10 @@
+bench,config,sched,dist,ok,rc,roi_cycles,sim_seconds,remote_steals,local_steals,dealt_remote,avg_miss_latency,avg_latency,pages,wall_seconds
+map,ws-numactl,ws,standard,True,0,2198071,0.001046,24,23,0,454.350792,4.291083, node0=1160 node1=845,51.4
+map,la-fine,locality,fine,True,0,2097878,0.000999,24,0,0,394.619717,3.951704, node0=1187 node1=818,49.7
+map,la-coarse,locality,coarse,True,0,1955228,0.000931,0,0,24,347.309105,3.730259, node0=1187 node1=818,48.6
+jacobi,ws-numactl,ws,standard,True,0,15046489,0.007162,58,68,0,227.443316,1.364017, node0=1419 node1=1103,271.8
+jacobi,la-fine,locality,fine,True,0,15112092,0.007194,44,0,0,221.551688,1.361571, node0=1448 node1=1074,265.8
+jacobi,la-coarse,locality,coarse,True,0,14948130,0.007115,42,0,64,197.792026,1.322517, node0=1448 node1=1074,261.6
+matmul,ws-numactl,ws,standard,True,0,51422436,0.024477,32,31,0,149.182086,1.035366, node0=683 node1=367,709.8
+matmul,la-fine,locality,fine,True,0,51428504,0.02448,20,0,0,172.011273,1.041549, node0=808 node1=238,696.7
+matmul,la-coarse,locality,coarse,True,0,51318085,0.024428,0,0,32,129.936398,1.031722, node0=712 node1=338,709.6
