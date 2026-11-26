@@ -1,0 +1,43 @@
+bench,config,sched,dist,ok,rc,roi_cycles,sim_seconds,remote_steals,local_steals,dealt_remote,avg_miss_latency,avg_latency,pages,cost_accepted,cost_rejected,adaptive,wall_seconds
+matmul,ws-numactl,ws,standard,True,0,52032752,0.024768,53,10,0,259.805593,1.063012, node0=496 node1=94 node2=94 node3=94 node4=93 node5=93 node6=92 node7=92,,,,994.2
+matmul,la-fine,locality,fine,True,0,77585184,0.036931,49,0,0,267.223475,1.075346, node0=666 node1=206 node2=206 node3=14 node4=14 node5=14 node6=14 node7=14,,,,992.7
+matmul,la-coarse,locality,coarse,True,0,51683372,0.024601,0,0,56,203.518831,1.047904, node0=546 node1=86 node2=86 node3=86 node4=86 node5=86 node6=86 node7=86,,,,1067.6
+matmul,la-fine-cost,locality,fine,True,0,52427855,0.024956,53,0,0,265.102812,1.074936, node0=666 node1=206 node2=206 node3=14 node4=14 node5=14 node6=14 node7=14,11,0,,1013.8
+matmul,la-coarse-cost,locality,coarse,True,0,51649762,0.024586,0,0,56,201.29066,1.047503, node0=546 node1=86 node2=86 node3=86 node4=86 node5=86 node6=86 node7=86,0,0,,1044.2
+matmul,la-adaptive,locality,adaptive,True,0,51674341,0.024597,0,0,56,200.803103,1.047333, node0=547 node1=86 node2=86 node3=86 node4=86 node5=86 node6=86 node7=86,,,fine=0 coarse=192,1023.9
+matmul,la-adaptive-cost,locality,adaptive,True,0,51694100,0.024607,0,0,56,200.878486,1.047394, node0=547 node1=86 node2=86 node3=86 node4=86 node5=86 node6=86 node7=86,0,0,fine=0 coarse=192,1023.2
+sparselu,ws-numactl,ws,standard,True,0,31797437,0.015136,367,101,0,860.494728,1.766145, node0=444 node1=41 node2=41 node3=41 node4=40 node5=41 node6=40 node7=39,,,,387.0
+sparselu,la-fine,locality,fine,True,0,39248536,0.018682,256,0,0,653.59234,1.696746, node0=625 node1=14 node2=15 node3=14 node4=14 node5=14 node6=14 node7=14,,,,344.3
+sparselu,la-coarse,locality,coarse,True,0,39386030,0.018748,266,0,0,665.71713,1.706904, node0=499 node1=32 node2=32 node3=32 node4=33 node5=32 node6=32 node7=32,,,,335.7
+sparselu,la-fine-cost,locality,fine,True,0,33280514,0.015842,339,0,0,1068.881704,2.244042, node0=627 node1=15 node2=14 node3=14 node4=14 node5=14 node6=14 node7=14,329,0,,326.3
+sparselu,la-coarse-cost,locality,coarse,True,0,33493561,0.015943,341,0,0,1113.918304,2.303946, node0=500 node1=33 node2=32 node3=32 node4=32 node5=32 node6=32 node7=32,331,0,,343.7
+sparselu,la-adaptive,locality,adaptive,True,0,38581358,0.018365,265,0,0,660.210734,1.707123, node0=500 node1=32 node2=33 node3=32 node4=32 node5=32 node6=32 node7=32,,,fine=0 coarse=144,335.3
+sparselu,la-adaptive-cost,locality,adaptive,True,0,33388533,0.015893,334,0,0,1098.772522,2.281852, node0=502 node1=33 node2=32 node3=32 node4=32 node5=32 node6=32 node7=32,323,0,fine=0 coarse=144,333.8
+jacobi,ws-numactl,ws,standard,True,0,15722483,0.007484,106,20,0,308.664822,1.49276, node0=680 node1=278 node2=278 node3=278 node4=277 node5=277 node6=276 node7=276,,,,553.0
+jacobi,la-fine,locality,fine,True,0,22655882,0.010784,94,0,0,282.668931,1.446938, node0=730 node1=270 node2=270 node3=270 node4=270 node5=270 node6=270 node7=270,,,,568.3
+jacobi,la-coarse,locality,coarse,True,0,21841841,0.010397,93,0,64,273.340634,1.436257, node0=1498 node1=1038 node2=14 node3=14 node4=14 node5=14 node6=14 node7=14,,,,600.8
+jacobi,la-fine-cost,locality,fine,True,0,15865115,0.007552,106,0,0,289.246207,1.460299, node0=730 node1=270 node2=270 node3=270 node4=270 node5=270 node6=270 node7=270,64,0,,570.5
+jacobi,la-coarse-cost,locality,coarse,True,0,15901814,0.00757,105,0,64,303.809517,1.492786, node0=1498 node1=1038 node2=14 node3=14 node4=14 node5=14 node6=14 node7=14,63,73,,583.2
+jacobi,la-adaptive,locality,adaptive,True,0,22653540,0.010783,94,0,0,282.362629,1.44689, node0=731 node1=270 node2=270 node3=270 node4=270 node5=270 node6=270 node7=270,,,fine=2 coarse=0,568.2
+jacobi,la-adaptive-cost,locality,adaptive,True,0,15839571,0.00754,106,0,0,287.744683,1.458515, node0=731 node1=270 node2=270 node3=270 node4=270 node5=270 node6=270 node7=270,64,0,fine=2 coarse=0,602.4
+reduction,ws-numactl,ws,standard,True,0,322772645,0.15364,45,18,0,275.02517,2.471935, node0=926 node1=533 node2=533 node3=533 node4=532 node5=533 node6=532 node7=532,,,,562.7
+reduction,la-fine,locality,fine,True,0,353679033,0.168351,29,0,0,266.240144,2.405942, node0=982 node1=526 node2=526 node3=520 node4=526 node5=520 node6=526 node7=520,,,,511.7
+reduction,la-coarse,locality,coarse,True,0,326486214,0.155408,27,0,0,263.285407,2.410773, node0=2518 node1=2062 node2=14 node3=8 node4=14 node5=8 node6=14 node7=8,,,,516.1
+reduction,la-fine-cost,locality,fine,True,0,326272800,0.155306,34,0,0,268.300957,2.41826, node0=982 node1=526 node2=526 node3=520 node4=524 node5=520 node6=526 node7=520,12,0,,439.1
+reduction,la-coarse-cost,locality,coarse,True,0,306964948,0.146115,36,0,0,293.091862,2.58104, node0=2518 node1=2062 node2=14 node3=8 node4=14 node5=8 node6=14 node7=8,12,11,,435.0
+reduction,la-adaptive,locality,adaptive,True,0,353473993,0.168254,30,0,0,266.512514,2.407476, node0=983 node1=526 node2=526 node3=520 node4=526 node5=520 node6=525 node7=520,,,fine=2 coarse=0,440.2
+reduction,la-adaptive-cost,locality,adaptive,True,0,325407047,0.154894,36,0,0,267.596263,2.413959, node0=983 node1=526 node2=526 node3=520 node4=526 node5=520 node6=526 node7=520,12,0,fine=2 coarse=0,497.2
+vecmul,ws-numactl,ws,standard,True,0,1679979,0.0008,42,5,0,302.729554,5.69105, node0=712 node1=309 node2=309 node3=309 node4=308 node5=309 node6=308 node7=308,,,,69.4
+vecmul,la-fine,locality,fine,True,0,1896910,0.000903,42,0,0,294.351118,5.110495, node0=758 node1=302 node2=302 node3=302 node4=302 node5=302 node6=302 node7=302,,,,77.4
+vecmul,la-coarse,locality,coarse,True,0,1726739,0.000822,0,0,42,254.999673,5.320842, node0=758 node1=302 node2=302 node3=302 node4=302 node5=302 node6=302 node7=302,,,,59.7
+vecmul,la-fine-cost,locality,fine,True,0,1973203,0.00094,42,0,0,302.894694,5.163055, node0=758 node1=302 node2=302 node3=302 node4=302 node5=302 node6=302 node7=302,0,0,,70.4
+vecmul,la-coarse-cost,locality,coarse,True,0,1738214,0.000828,0,0,42,255.750255,5.41338, node0=758 node1=302 node2=302 node3=302 node4=302 node5=302 node6=302 node7=302,0,0,,80.2
+vecmul,la-adaptive,locality,adaptive,True,0,1732106,0.000825,0,0,42,252.247622,5.035126, node0=759 node1=302 node2=302 node3=302 node4=302 node5=302 node6=302 node7=302,,,fine=0 coarse=144,68.4
+vecmul,la-adaptive-cost,locality,adaptive,True,0,1729510,0.000824,0,0,42,253.026439,5.134934, node0=759 node1=302 node2=302 node3=302 node4=302 node5=302 node6=302 node7=302,0,0,fine=0 coarse=144,70.0
+map,ws-numactl,ws,standard,True,0,1474664,0.000702,42,5,0,281.127382,2.964361, node0=615 node1=213 node2=213 node3=213 node4=212 node5=213 node6=212 node7=212,,,,94.6
+map,la-fine,locality,fine,True,0,1705621,0.000812,42,0,0,304.42715,3.121479, node0=661 node1=206 node2=206 node3=206 node4=206 node5=206 node6=206 node7=206,,,,98.0
+map,la-coarse,locality,coarse,True,0,1281295,0.00061,0,0,42,157.705108,2.126493, node0=661 node1=206 node2=206 node3=206 node4=206 node5=206 node6=206 node7=206,,,,83.4
+map,la-fine-cost,locality,fine,True,0,2271469,0.001081,38,0,0,303.328638,3.134248, node0=661 node1=206 node2=206 node3=202 node4=206 node5=206 node6=206 node7=206,0,0,,78.7
+map,la-coarse-cost,locality,coarse,True,0,1285301,0.000612,0,0,42,159.789835,2.1568, node0=661 node1=206 node2=206 node3=206 node4=206 node5=206 node6=206 node7=206,0,0,,86.1
+map,la-adaptive,locality,adaptive,True,0,1279063,0.000609,0,0,42,157.605517,2.12414, node0=662 node1=206 node2=206 node3=206 node4=206 node5=206 node6=206 node7=206,,,fine=0 coarse=48,67.9
+map,la-adaptive-cost,locality,adaptive,True,0,1289829,0.000614,0,0,42,161.74145,2.165732, node0=662 node1=206 node2=206 node3=206 node4=206 node5=206 node6=206 node7=206,0,0,fine=0 coarse=48,87.0

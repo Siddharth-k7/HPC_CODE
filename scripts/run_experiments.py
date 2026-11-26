@@ -15,6 +15,13 @@ Configurations (paper Figure 7):
   la-coarse     locality-aware, coarse
   la-standard   locality-aware, first-touch (extra; runtime has no page info)
 
+Improvements (beyond the paper):
+  la-fine-cost      locality-aware, fine,     cost-aware stealing   (Improvement 1)
+  la-coarse-cost    locality-aware, coarse,   cost-aware stealing   (Improvement 1)
+  la-adaptive       locality-aware, adaptive distribution, hop rule (Improvement 2)
+  la-adaptive-cost  locality-aware, adaptive + cost-aware stealing  (both)
+  "adaptive" reads profiles/<bench>.prof (made by improvements_experiments.sh)
+
 Example:
   python3 scripts/run_experiments.py --gem5 ~/gem5/build/X86_MOESI_hammer/gem5.opt \
       --bench map --jobs 3
@@ -42,7 +49,13 @@ CONFIGS = {
     "la-fine": ("locality", "fine"),
     "la-coarse": ("locality", "coarse"),
     "la-standard": ("locality", "standard"),
+    # Improvement 1 and 2
+    "la-fine-cost": ("locality", "fine"),
+    "la-coarse-cost": ("locality", "coarse"),
+    "la-adaptive": ("locality", "adaptive"),
+    "la-adaptive-cost": ("locality", "adaptive"),
 }
+IMPROVEMENT_CONFIGS = ["la-fine-cost", "la-coarse-cost", "la-adaptive", "la-adaptive-cost"]
 PAPER_CONFIGS = ["ws-numactl", "ws-fine", "ws-coarse", "la-fine", "la-coarse"]
 
 # Scaled-down inputs for the 48-core gem5 machine (see README for the reasoning)
@@ -98,6 +111,12 @@ def run_one(gem5, bench, cfg, outroot, extra_args, gem5_args, bench_args):
         f.write(f"RT_TRACE={os.path.join(outdir, 'trace.csv')}\n")
         if cfg == "ws-numactl":
             f.write("NUMA_INTERLEAVE_ALL=1\n")
+        if cfg.endswith("-cost"):
+            f.write("RT_STEAL_DIST=cost\n")
+        if dist == "adaptive":
+            prof = os.path.join(ROOT, "profiles", f"{bench}.prof")
+            if os.path.exists(prof):
+                f.write(f"RT_PROFILE_IN={prof}\n")
         for kv in extra_args:
             f.write(kv + "\n")
     cmd = [
@@ -133,6 +152,9 @@ def run_one(gem5, bench, cfg, outroot, extra_args, gem5_args, bench_args):
         "avg_miss_latency": mean_of(stats, "m_missLatencyHistSeqr::mean"),
         "avg_latency": mean_of(stats, "m_latencyHistSeqr::mean"),
         "pages": grab(r"NUMA pages placed:([^\n]*)", str),
+        "cost_accepted": grab(r"cost steals: accepted=(\d+)"),
+        "cost_rejected": grab(r"cost steals: accepted=\d+ rejected=(\d+)"),
+        "adaptive": grab(r"adaptive: (fine=\d+ coarse=\d+)", str),
         "wall_seconds": round(wall, 1),
     }
     print(f"[{bench:9s} {cfg:12s}] rc={rc} ok={row['ok']} "
@@ -146,7 +168,7 @@ def main():
     ap.add_argument("--gem5", required=True, help="path to gem5.opt / gem5.fast")
     ap.add_argument("--bench", default="map", help="name, comma list, or all")
     ap.add_argument("--configs", default="paper",
-                    help="paper, all, or a comma list, e.g. ws-fine,la-coarse")
+                    help="paper, improvements, all, or a comma list, e.g. ws-fine,la-coarse")
     ap.add_argument("--jobs", type=int, default=2, help="gem5 runs in parallel")
     ap.add_argument("--out", default=os.path.join(ROOT, "results"))
     ap.add_argument("--bench-args", default=None,
@@ -159,6 +181,7 @@ def main():
 
     benches = ALL_BENCHES if a.bench == "all" else a.bench.split(",")
     cfgs = (PAPER_CONFIGS if a.configs == "paper"
+            else IMPROVEMENT_CONFIGS if a.configs == "improvements"
             else list(CONFIGS) if a.configs == "all" else a.configs.split(","))
     jobs = []
     for b in benches:

@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NUMA Project 3D Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: precise engineering explainer for a viva, calm, every part named.
+   IDEA: the populated 4-socket motherboard on a bench, with a live scheduler running on it.
+   PICTURE: 48 cores in 8 nodes in 3D; tasks queue, run, get stolen; memory requests race to DRAM.
+   COLOUR and TYPE: PCB green field, copper links, solder-white labels, hop colours green/amber/red; IBM Plex.
+   LAYOUT: guide left, 3D centre, simulator right; then hotspots and improvements; then the full comparison tables. */
+:root{color-scheme:light dark;--bg:light-dark(#eef1ec,#0b1a14);--ink:light-dark(#14201a,#e6efe9);--soft:light-dark(#4d5d55,#9fb3a8);--card:light-dark(#ffffff,#12261d);--line:light-dark(#cdd6cf,#24412f);--pcb:#0f3d2b;--copper:#d0843f;--local:#2fbf9b;--hop1:#e8b04a;--hop2:#e0614f;--steal:#9b8cff;--good:light-dark(#1d8a6c,#45d3ad);--bad:light-dark(#b5402f,#ef7d6c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans",system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;line-height:1.05;text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,3.4vw,42px)}h2{font-size:clamp(26px,3vw,36px);margin-bottom:10px}h3{font-size:20px}
+.band{padding:clamp(24px,4vw,52px) max(4vw,14px)}header.band{padding-block:clamp(16px,2.2vw,28px)}.wrap{max-width:1240px;margin:0 auto}
+.lede{color:var(--soft);max-width:75ch;margin:8px 0 0}
+html{scroll-padding-top:64px;scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+nav.toc{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+nav.toc .in{max-width:1600px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;padding:8px max(2vw,12px)}
+nav.toc a{flex:none;color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:999px;border:1px solid var(--line);font-size:14px}
+nav.toc a:hover{background:var(--card)}
+.stage{background:var(--pcb);color:#eaf3ee;padding:14px max(1.5vw,10px) 18px}
+.sg{max-width:1640px;margin:0 auto;display:grid;grid-template-columns:340px minmax(0,1fr) 330px;gap:14px;align-items:start}
+@media(max-width:1280px){.sg{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.fig{grid-column:1/-1;order:-1}}
+@media(max-width:760px){.sg{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:10px}
+.box{background:rgba(0,0,0,.24);border-radius:12px;padding:12px 14px}
+.box h3{font-size:16px;margin-bottom:6px}
+.chapters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.chapters button{text-align:center;padding:5px 2px;font-size:13px;line-height:1.15;min-height:46px}
+.kick{margin:0 0 4px;font-size:13px;color:#b9cfc3}.guide h3{font-size:21px;margin-bottom:8px}
+.guide p,.guide li{font-size:15px;margin:0 0 7px}.guide ul{margin:0 0 7px;padding-left:19px}
+.guide{max-height:min(62vh,620px);overflow-y:auto}
+.see{border-left:3px solid var(--copper);padding:6px 10px;background:rgba(208,132,63,.13);border-radius:0 8px 8px 0;font-size:14px!important}
+.navbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.navbtns button{text-align:center}
+.dots{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}.dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.2)}.dots i.on{background:var(--copper)}
+.who{display:grid;gap:8px;margin:6px 0}.who div{background:rgba(255,255,255,.07);border-radius:10px;padding:8px 10px;font-size:14px}.who b{display:block;font-size:15.5px}.ph{color:#e8b04a;font-style:italic}.hsn{display:block;color:#e8b04a;font-weight:600;margin:2px 0 4px}.who ul{margin:0;padding-left:18px}.who li{font-size:14px;margin:0 0 3px}.who b.il{display:inline;font-size:14px}
+.fig{position:relative;height:clamp(440px,74vh,780px);border-radius:14px;overflow:hidden;background:radial-gradient(120% 90% at 50% 20%,#1a5a40,#0a2a1d)}
+.fig canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:12.5px;line-height:1.2;padding:3px 7px;border-radius:6px;background:rgba(6,22,15,.82);color:#f2f7f4;border:1px solid rgba(208,132,63,.55)}
+.lbl.small{font-size:11.5px;padding:2px 5px;border-color:rgba(255,255,255,.25)}.lbl.sock{background:rgba(208,132,63,.92);color:#1b0f05;border:0;font-weight:700}
+.lbl.q{background:rgba(155,140,255,.9);color:#120c33;border:0;font-weight:700}
+.hud{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.hud span{background:rgba(6,22,15,.8);border-radius:8px;padding:4px 9px;font-size:13px}
+.hint{position:absolute;left:10px;bottom:10px;font-size:12.5px;color:#cfe3d8;background:rgba(6,22,15,.72);padding:4px 9px;border-radius:6px}
+.legend3d{position:absolute;right:10px;bottom:10px;background:rgba(6,22,15,.78);border-radius:8px;padding:6px 9px;font-size:12.5px;display:grid;gap:2px}
+.legend3d span{display:flex;align-items:center;gap:6px}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex:none}
+button,select{font:inherit;font-size:15px;min-height:44px;padding:7px 11px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:inherit;cursor:pointer;text-align:left}
+select{width:100%;font-size:16px;background:#123726}
+button:hover{background:rgba(255,255,255,.12)}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--copper);outline-offset:2px}
+button[aria-pressed=true]{background:var(--copper);color:#1b0f05;border-color:var(--copper);font-weight:700}
+button:disabled{opacity:.45;cursor:default}
+label.f{display:grid;gap:4px;font-size:13.5px;color:#cfe3d8}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+input[type=range]{width:100%;accent-color:var(--copper);min-height:30px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{background:rgba(255,255,255,.06);border-radius:10px;padding:7px 9px}.kpi small{display:block;font-size:12.5px;color:#b9cfc3}.kpi b{font:700 20px/1.1 "IBM Plex Sans Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.meter{display:grid;grid-template-columns:4.2em minmax(0,1fr) 2.6em;align-items:center;gap:7px;font-size:13px;margin:3px 0}
+.bar{height:11px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;display:flex}.bar i{display:block;height:100%}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{font-size:13px;color:#b9cfc3;margin:6px 0 0}
+.cmp{display:grid;gap:5px;margin-top:4px}
+.cmp .meter{grid-template-columns:8.6em minmax(0,1fr) 3.2em}
+/* light sections */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin-bottom:8px}.card p{margin:0 0 8px}.card ul{margin:0 0 8px;padding-left:20px}
+.tag{display:inline-block;font-size:13px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--soft);margin-bottom:8px}
+.hs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px}
+.hs .card dl{display:grid;gap:4px;margin:0}.hs dt{font-weight:700;margin-top:6px}.hs dd{margin:0;color:var(--ink)}
+.eq{font:500 15.5px/1.55 "IBM Plex Sans",sans-serif;background:light-dark(#f2f6f3,#0e2018);border-radius:10px;padding:9px 12px;margin:8px 0;overflow-x:auto}
+.ch{display:grid;gap:6px;margin-top:8px}
+.ch .r{display:grid;grid-template-columns:6.2em minmax(0,1fr) 3.4em;gap:8px;align-items:center;font-size:14px}
+.ch .bar{background:light-dark(#e3e9e4,#1b3428);height:14px}
+.ch .r .bar{position:relative}.ch .base{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+.light button{border-color:var(--line);color:var(--ink);background:var(--card)}
+.light button[aria-pressed=true]{background:var(--copper);color:#1b0f05}
+.tl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px;margin-top:14px}
+.tl div{border-top:3px solid var(--copper);padding-top:8px;font-size:14.5px}.tl b{display:block}
+table{border-collapse:collapse;width:100%;font-size:14.5px}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:light-dark(#e3eae5,#163024);position:sticky;top:0}
+tr.grp td{background:light-dark(#d6e2da,#1d3b2d);font-weight:700;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:15.5px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll{overflow-x:auto}.tablewrap{max-height:none}
+.yes{color:var(--good);font-weight:700}.no{color:var(--bad);font-weight:700}
+code{overflow-wrap:anywhere;font-size:.92em}
+footer{color:var(--soft);font-size:14px}
+@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8.4em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:8em;margin-inline-start:-8.4em;white-space:normal;color:var(--soft)}.stack td:empty{display:none}.stack tr.grp td{padding-inline-start:0}.stack tr.grp td::before{display:none}.lbl.small{display:none}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<nav class="toc" aria-label="Sections"><div class="in">
+  <a href="#sim">3D simulator and guide</a><a href="#hotspots">Hotspots and fixes</a><a href="#improve">Our two improvements</a><a href="#maths">Maths per benchmark</a><a href="#compare">Full comparison with the paper</a>
+</div></nav>
+
+<header class="band wrap">
+  <h1>Locality-aware task scheduling on a 48-core NUMA machine</h1>
+  <p class="lede">Muddukrishna, Jonsson and Brorsson (Scientific Programming, 2015), rebuilt in gem5 as a 4-socket AMD Opteron 6172. Guide on the left, the machine in 3D, a live scheduler on the right; hotspots, our two improvements and the full comparison below.</p>
+</header>
+
+<section class="stage" id="sim" aria-label="Guide, 3D machine and simulator">
+  <div class="sg">
+    <div class="col">
+      <nav class="chapters" aria-label="Chapters" id="chap"></nav>
+      <div class="box guide" aria-live="polite"><p class="kick" id="gStep"></p><h3 id="gTitle"></h3><div id="gBody"></div><p class="see" id="gSee"></p><div class="dots" id="dots"></div></div>
+      <div class="navbtns"><button id="prev">Previous</button><button id="next">Next</button></div>
+    </div>
+
+    <div class="fig" id="fig">
+      <canvas id="cv"></canvas>
+      <div id="labels"></div>
+      <div class="hud" id="hud"></div>
+      <div class="legend3d">
+        <span><i class="dot" style="background:#2fbf9b"></i>core running a task from its own node</span>
+        <span><i class="dot" style="background:#9b8cff"></i>core running a stolen task</span>
+        <span><i class="dot" style="background:#5d6663"></i>core idle</span>
+        <span><i class="dot" style="background:#2fbf9b"></i><i class="dot" style="background:#e8b04a"></i><i class="dot" style="background:#e0614f"></i>memory request: local, 1 hop, 2 hops</span>
+      </div>
+      <div class="hint" id="hint">Drag to rotate · scroll to zoom · click a node</div>
+    </div>
+
+    <div class="col">
+      <div class="box">
+        <h3>Scheduler simulation</h3>
+        <label class="f">Benchmark<select id="sBench"><option value="map">Map (48 tasks)</option><option value="jacobi">Jacobi (2 sweeps × 64 tiles)</option><option value="matmul">Matmul (64 block tasks)</option><option value="sparselu">SparseLU (many small tasks)</option></select></label>
+        <label class="f" style="margin-top:8px">Scheduler<select id="sSched"><option value="ws">Work-stealing (baseline)</option><option value="hops">Locality-aware, paper's steal rule</option><option value="cost">Locality-aware + cost-aware stealing (ours)</option></select></label>
+        <label class="f" style="margin-top:8px">Data distribution<select id="sPol"><option value="numactl">numactl interleave (baseline)</option><option value="fine">fine</option><option value="coarse">coarse</option><option value="adaptive">adaptive (ours)</option></select></label>
+        <div class="row2" style="margin-top:10px"><button id="sPlay">Pause</button><button id="sRestart">Restart</button></div>
+        <label class="f" style="margin-top:8px">Speed <span id="spdV">1×</span><input type="range" id="sSpeed" min="0.25" max="4" step="0.25" value="1"></label>
+      </div>
+      <div class="box">
+        <div class="kpis">
+          <div class="kpi"><small>Simulated time</small><b id="kT">0</b></div>
+          <div class="kpi"><small>Tasks done</small><b id="kDone">0</b></div>
+          <div class="kpi"><small>Steals across nodes</small><b id="kSt">0</b></div>
+          <div class="kpi"><small>Steals refused (cost rule)</small><b id="kRej">0</b></div>
+          <div class="kpi"><small>Avg memory trip</small><b id="kLat">0</b></div>
+          <div class="kpi"><small>Finish vs baseline</small><b id="kRel">…</b></div>
+        </div>
+        <h3 style="margin-top:10px">Tasks run on each node</h3>
+        <div id="perNode"></div>
+      </div>
+      <div class="box">
+        <h3>Same setting, all schedulers</h3>
+        <div class="cmp" id="cmpRows"></div>
+        <p class="note" id="gemNote"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band wrap" id="hotspots">
+  <h2>The three hotspots, and how our model handles them</h2>
+  <p class="lede">Where the locality-aware scheduler spends time or loses it, what our runtime does about each one, what we measured in gem5, and what is still open.</p>
+  <div class="hs" id="hsCards" style="margin-top:16px"></div>
+</section>
+
+<section class="band wrap light" id="improve">
+  <h2>Our two improvements, measured in gem5</h2>
+  <p class="lede">Both are new runtime options, so the paper's behaviour is unchanged when they are off. Time is the parallel region's simulated time divided by ws-numactl (work-stealing with every page interleaved, the paper's baseline). Below 1.00× is faster. Every run printed a correct result.</p>
+  <div class="cards" style="margin-top:16px">
+    <div class="card"><span class="tag">Improvement 1 · RT_STEAL_DIST=cost</span><h3>NUMA cost-aware work stealing</h3>
+      <p>The paper lets a node steal only when another queue holds more than distance × 6 tasks, and stops at the first such queue. With few tasks, far cores sit idle. Our rule compares time against time:</p>
+      <div class="eq">steal from node i if &nbsp; backlog<sub>i</sub> × T<sub>task</sub> / 6 &nbsp;&gt;&nbsp; 92 × Σ<sub>j</sub> lines<sub>j</sub> × (hops(me, j) − hops(i, j))</div>
+      <p>backlog = queued tasks minus idle cores of node i; T<sub>task</sub> = measured average task time (before the first task ends: lines × 151 cycles); 92 cycles is the measured cost of one hop.</p>
+      <div class="seg" id="r1seg" role="group" aria-label="Result round"></div>
+      <div class="ch" id="r1chart"></div>
+      <p class="note" style="color:var(--soft)" id="r1note"></p>
+    </div>
+    <div class="card"><span class="tag">Improvement 2 · OMP_DATA_DISTRIBUTION=adaptive</span><h3>Data distribution chosen by evidence</h3>
+      <p>Choosing fine or coarse by hand is easy to get wrong (Matmul with fine runs 1.49×). The runtime now starts from fine and switches an allocation to coarse only with evidence:</p>
+      <div class="eq">coarse if &nbsp; size &lt; 8 pages &nbsp; or &nbsp; touched / (tasks × size) ≥ 0.5 &nbsp; else fine</div>
+      <p>A quick profile run (<code>RT_PROFILE_OUT</code>) records, per allocation, how many tasks list it and how many bytes each lists; the gem5 run reads it back (<code>RT_PROFILE_IN</code>). Pages are never moved, so the gem5 NUMA patch is unchanged.</p>
+      <div class="ch" id="r2chart"></div>
+      <p class="note" style="color:var(--soft)">Grey: hand-picked fine. Dark: hand-picked coarse. Green: adaptive (its choice in brackets). It matches the best hand pick on 4 of 6, and misses on Jacobi (+3.7%) and Reduction (+8.3%), where coarse happened to be faster than the paper's guidance.</p>
+    </div>
+  </div>
+  <h3 style="margin-top:22px">How Improvement 1 was debugged</h3>
+  <div class="tl" id="timeline"></div>
+</section>
+
+<section class="band wrap" id="maths">
+  <h2>The maths: what each benchmark computes, and what the scheduler computes</h2>
+  <p class="lede">Every benchmark is split into tasks. A task's footprint is the data it lists; the scheduler uses only that list, the allocation table and the distance table.</p>
+  <div class="scroll" style="margin-top:14px"><table class="stack" id="tMaths"></table></div>
+  <h3 style="margin-top:24px">Maths inside the runtime</h3>
+  <div class="scroll" style="margin-top:10px"><table class="stack" id="tRtMaths"></table></div>
+</section>
+
+<section class="band wrap" id="compare">
+  <h2>Full comparison: base paper vs our model</h2>
+  <p class="lede">Every difference between the 2015 paper and our gem5 implementation, from the hardware to the last result.</p>
+  <div class="scroll" style="margin-top:14px"><table class="stack" id="tCmp"></table></div>
+  <footer style="margin-top:18px">Numbers from results/summary.csv, results_improvements/ (round 1 and fix 1), the extended experiment folders and gpu/results. The simulator panel above is a simplified model built for this page; its numbers are illustrative and the gem5 numbers next to it are the measured ones.</footer>
+</section>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// sim.js : event-driven toy model of the 48-core, 8-node machine.
+// Same rules as runtime/numa_rt.c, simplified timing: a task's time =
+// compute + sum over nodes j of (cache lines on j) x latency(hops).
+(function (root) {
+const NN = 8, CPN = 6, NC = 48;
+const LAT = [151, 243, 335], HOPCOST = 92, CREATE = 100, POLL = 30000;
+const linked = (a, b) => (a >> 1) === (b >> 1) || (a % 2) === (b % 2);
+const HOPS = [...Array(NN)].map((_, s) => {
+  const d = Array(NN).fill(-1); d[s] = 0; const q = [s];
+  while (q.length) { const u = q.shift(); for (let v = 0; v < NN; v++) if (v !== u && d[v] < 0 && linked(u, v)) { d[v] = d[u] + 1; q.push(v); } }
+  return d;
+});
+const DIST = HOPS.map(r => r.map(h => h ? 10 + 6 * h : 10));
+const ORDER = [...Array(NN)].map((_, a) => {
+  const o = []; for (let d = 1; d <= 3; d++) for (let off = 1; off < NN; off++) { const b = (a + off) % NN; if (HOPS[a][b] === d) o.push(b); } return o;
+});
+
+// Benchmarks (scaled like our gem5 inputs). lines = 64-byte cache lines a task touches.
+// shape: per-task allocation ("own") or one big shared allocation ("shared").
+const BENCH = {
+  map:      { name: 'Map',      phases: [48],              lines: 2048, comp: 900000,  shape: 'own', allocs: 1, small: false, adaptive: 'coarse' },
+  jacobi:   { name: 'Jacobi',   phases: [64, 64],          lines: 1300, comp: 140000, shape: 'shared', adaptive: 'fine' },
+  matmul:   { name: 'Matmul',   phases: [64],              lines: 2448, comp: 1600000, shape: 'blocks', allocs: 17, small: true, adaptive: 'coarse' },
+  sparselu: { name: 'SparseLU', phases: [15, 49, 13, 36, 11, 25, 9, 16, 7, 9, 5, 4, 3, 1, 1, 1].map(x => x * 2), lines: 192, comp: 45000, shape: 'blocks', allocs: 3, small: true, adaptive: 'coarse' }
+};
+
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+// lines of task k on each node, for a data policy
+function footprint(b, pol, k) {
+  const D = Array(NN).fill(0), L = b.lines;
+  if (pol === 'numactl' || (pol === 'fine' && !b.small)) { for (let j = 0; j < NN; j++) D[j] = L / NN; return D; }
+  if (pol === 'fine') { for (let j = 0; j < 3; j++) D[j] = L / 3; return D; } // small blocks: 3 pages -> nodes 0..2
+  // coarse
+  if (b.shape === 'own') { D[k % NN] = L; return D; }
+  if (b.shape === 'shared') { D[0] = L / 2; D[1] = L / 2; return D; }        // grid A on node 0, grid B on node 1
+  // blocks: allocs blocks of the task spread round-robin; the written block decides deal
+  const per = L / b.allocs; for (let a = 0; a < b.allocs; a++) D[(k * 3 + a * 5) % NN] += per; D[(k * 3) % NN] += per * 0.6; return D;
+}
+
+// sched: 'ws' | 'hops' | 'cost' ; pol: 'numactl'|'fine'|'coarse'|'adaptive'
+function simulate(benchKey, sched, pol0) {
+  const b = BENCH[benchKey];
+  const pol = pol0 === 'adaptive' ? b.adaptive : pol0;
+  const nextPoll = Array(NC).fill(0);
+  const busyUntil = Array(NC).fill(0), coreNode = [...Array(NC)].map((_, c) => (c / CPN) | 0);
+  const events = [];                 // {t, kind, ...} for playback
+  const runs = [];                   // task executions
+  let t = 0, taskId = 0;
+  let steals = 0, localSteals = 0, rejected = 0, sumLat = 0, sumLines = 0, measSum = 0, measN = 0;
+  const qlog = [];                   // queue lengths over time
+  for (let p = 0; p < b.phases.length; p++) {
+    // create tasks (main thread on core 0, node 0)
+    const nodeQ = [...Array(NN)].map(() => []), coreQ = [...Array(NC)].map(() => []);
+    // the main thread (core 0) creates the tasks one by one, CREATE cycles each
+    const pending = [];
+    for (let k = 0; k < b.phases[p]; k++) {
+      const D = footprint(b, pol, k + p * 7);
+      const task = { id: taskId++, D, home: 0 };
+      task.rel = t + (k + 1) * CREATE;
+      pending.push(task);
+      if (sched === 'ws') continue;
+      const bytes = D.reduce((s, x) => s + x, 0) * 64;
+      const uneven = D.some(x => Math.abs(x - D[0]) > 1e-9);
+      let l = 0;
+      if (bytes > 65536 && uneven) {   // Algorithm 1
+        let best = Infinity;
+        for (let q = 0; q < NN; q++) { let c = 0; for (let j = 0; j < NN; j++) c += D[j] * DIST[q][j]; if (c < best - 1e-9) { best = c; l = q; } }
+      }
+      task.home = l;
+    }
+    busyUntil[0] = Math.max(busyUntil[0], t + b.phases[p] * CREATE);
+    const release = () => { while (pending.length && pending[0].rel <= t) { const tk = pending.shift(); if (sched === 'ws') coreQ[0].push(tk); else nodeQ[tk.home].push(tk); } };
+    const remaining = () => pending.length + (sched === 'ws' ? coreQ.reduce((s, q) => s + q.length, 0) : nodeQ.reduce((s, q) => s + q.length, 0));
+    qlog.push({ t, q: nodeQ.map(q => q.length), c: sched === 'ws' ? coreQ[0].length : 0 });
+    const runTask = (c, task, kind, from) => {
+      const n = coreNode[c]; let lat = 0, lines = 0;
+      for (let j = 0; j < NN; j++) { lat += task.D[j] * LAT[HOPS[n][j]]; lines += task.D[j]; }
+      const dur = b.comp + lat;
+      busyUntil[c] = t + dur; sumLat += lat; sumLines += lines;
+      runs.push({ id: task.id, core: c, node: n, start: t, end: t + dur, kind, from, D: task.D, home: task.home });
+      if (kind !== 'own') { if (from === n) localSteals++; else steals++; }
+    };
+    let guard = 0;
+    while (true) {
+      if (++guard > 100000) break;
+      release();
+      const idle = []; for (let c = 0; c < NC; c++) if (busyUntil[c] <= t) idle.push(c);
+      // pass 1: own queue
+      const still = [];
+      for (const c of idle) {
+        if (sched === 'ws') { const tk = coreQ[c].pop(); if (tk) runTask(c, tk, 'own', coreNode[c]); else still.push(c); }
+        else { const tk = nodeQ[coreNode[c]].shift(); if (tk) runTask(c, tk, 'own', coreNode[c]); else still.push(c); }
+      }
+      // pass 2: steal
+      const avg = measN ? measSum / measN : 0;
+      for (const c of still) {
+        const n = coreNode[c];
+        if (nextPoll[c] > t) continue;            // idle core is backing off
+        nextPoll[c] = t + POLL;
+        if (sched === 'ws') {
+          for (let k = 1; k < NC; k++) { const v = (c + k) % NC; if (coreQ[v].length) { runTask(c, coreQ[v].shift(), 'steal', coreNode[v]); break; } }
+          continue;
+        }
+        for (const i of ORDER[n]) {
+          const sz = nodeQ[i].length; if (!sz) continue;
+          if (sched === 'hops') { if (sz > HOPS[i][n] * CPN) { runTask(c, nodeQ[i].shift(), 'steal', i); break; } continue; }
+          // cost: victim has no idle cores here (pass 1 drained theirs), backlog = sz
+          const tk = nodeQ[i][0];
+          const est = tk.D.reduce((s, x) => s + x, 0) * LAT[0] + b.comp;
+          const T = avg || est;
+          let pen = 0; for (let j = 0; j < NN; j++) pen += tk.D[j] * HOPCOST * (HOPS[n][j] - HOPS[i][j]);
+          if (sz * T / CPN > pen) { runTask(c, nodeQ[i].shift(), 'steal', i); break; }
+          rejected++;
+        }
+      }
+      qlog.push({ t, q: nodeQ.map(q => q.length), c: sched === 'ws' ? coreQ[0].length : 0 });
+      // advance to next completion
+      const future = busyUntil.filter(x => x > t);
+      if (pending.length) future.push(pending[0].rel);
+      if (remaining()) for (let c = 0; c < NC; c++) if (busyUntil[c] <= t && nextPoll[c] > t) future.push(nextPoll[c]);
+      if (!future.length) { if (!remaining()) break; else continue; }
+      const nt = Math.min(...future);
+      for (const r of runs) if (r.end === nt) { measSum += r.end - r.start; measN++; }
+      t = nt;
+      if (!remaining() && busyUntil.every(x => x <= t)) break;
+    }
+    t = Math.max(t, ...busyUntil);
+  }
+  return { bench: benchKey, sched, pol, makespan: t, runs, qlog, steals, localSteals, rejected,
+           avgLat: sumLines ? sumLat / sumLines : 0, tasks: taskId };
+}
+
+const api = { simulate, BENCH, HOPS, DIST, ORDER, LAT, NN, CPN, NC };
+if (typeof module !== 'undefined') module.exports = api; else root.NumaSim = api;
+})(this);
+{
+// ---------------- measured gem5 data (normalised to ws-numactl) ----------------
+const BN = ['map','vecmul','matmul','jacobi','reduction','sparselu'];
+const BNAME = {map:'Map',vecmul:'Vecmul',matmul:'Matmul',jacobi:'Jacobi',reduction:'Reduction',sparselu:'SparseLU'};
+const PAPER = {fine:[1.16,1.13,1.49,1.44,1.10,1.23], coarse:[0.87,1.03,0.99,1.39,1.01,1.24]};
+const ADAPT = {t:[0.87,1.03,0.99,1.44,1.10,1.21], ch:['coarse','coarse','coarse','fine','fine','coarse']};
+const ROUNDS = {
+  r1:{name:'Round 1', fine:[1.54,1.17,1.01,1.01,1.01,1.05], coarse:[0.87,1.03,0.99,1.01,0.95,1.05], adaptive:[0.87,1.03,0.99,1.01,1.01,1.05],
+      note:'First run. Big wins on Jacobi, Matmul (fine), SparseLU and Reduction (coarse). Map fine got worse: its 48 tasks all start before any task finishes, so the rule had no task-time estimate and fell back to the paper rule for all 38 steals.'},
+  f1:{name:'Fix 1', fine:[1.17,1.19,1.03,1.00,1.00,1.05], coarse:[1.32,1.42,1.00,1.02,0.95,1.06], adaptive:[0.93,1.50,1.00,1.00,1.00,1.06],
+      note:'Cold-start estimate (lines × 151 cycles) fixed Map fine (1.54× → 1.17×) and kept the wins, but broke Map and Vecmul coarse: a refused steal popped the task and pushed it back, so the victim node briefly saw an empty queue and its cores went to sleep.'},
+  f2:{name:'Fix 2 (running)', pending:true,
+      note:'Fix 2 checks the task inside the victim\'s queue under its lock, takes it only if the steal is accepted, and treats a node as a victim only when it has more queued tasks than idle cores. The gem5 rerun is in progress; this chart will be updated with its numbers.'}
+};
+// lookup for the simulator panel: [round-1 value, fix-1 value] for cost configs
+const GEM = {
+  map:{'ws-numactl':1,'ws-fine':1.05,'ws-coarse':1.12,'hops-fine':1.16,'hops-coarse':0.87,'hops-adaptive':0.87,'cost-fine':[1.54,1.17],'cost-coarse':[0.87,1.32],'cost-adaptive':[0.87,0.93]},
+  jacobi:{'ws-numactl':1,'ws-fine':1.00,'ws-coarse':1.01,'hops-fine':1.44,'hops-coarse':1.39,'hops-adaptive':1.44,'cost-fine':[1.01,1.00],'cost-coarse':[1.01,1.02],'cost-adaptive':[1.01,1.00]},
+  matmul:{'ws-numactl':1,'ws-fine':1.00,'ws-coarse':1.00,'hops-fine':1.49,'hops-coarse':0.99,'hops-adaptive':0.99,'cost-fine':[1.01,1.03],'cost-coarse':[0.99,1.00],'cost-adaptive':[0.99,1.00]},
+  sparselu:{'ws-numactl':1,'ws-fine':0.98,'ws-coarse':1.00,'hops-fine':1.23,'hops-coarse':1.24,'hops-adaptive':1.21,'cost-fine':[1.05,1.05],'cost-coarse':[1.05,1.06],'cost-adaptive':[1.05,1.06]}
+};
+
+const HOTSPOTS = [
+ {n:'Hotspot 1',t:'Task scheduling overhead',
+  p:'Every task creation runs the placement analysis, and idle cores keep looking for work. Both cost cycles that do no useful work.',
+  how:'<ul><li><b>Early exit:</b> no data list, 1 node, footprint ≤ 64 KiB, or data spread evenly: the task goes straight to the local queue.</li><li><b>No system calls:</b> the runtime keeps its own allocation table instead of asking the OS where each page is.</li><li><b>Idle cores back off</b> (growing pauses) and then sleep on a futex until new work arrives.</li><li><b>Ours:</b> the cost rule reuses the one footprint Algorithm 1 already computes; its per-task numbers are worked out once at creation.</li></ul>',
+  m:'SparseLU\'s 472 tasks (8 to 12 KiB) all skip the analysis. Map\'s 48 tasks are analysed and 42 are sent to their data\'s node, with 0 steals needed.',
+  open:'Scheduling cycles are not measured on their own, only total time.'},
+ {n:'Hotspot 2',t:'Load imbalance',
+  p:'Restricting steals to a vicinity strands work: one node\'s queue holds most tasks while far cores sit idle.',
+  how:'<ul><li><b>Hop distance</b> instead of OS distance: steal limit 6 or 12 tasks instead of 96 or 132.</li><li><b>Nearest node first</b>, in a steal order built once at start-up.</li><li><b>Ours, Improvement 1:</b> cost-aware stealing compares the time the waiting work would take with the extra memory time of running it remotely, and keeps searching after a refusal.</li></ul>',
+  m:'Paper rule with OS distance: 0 steals, up to 5.47×. With hops: Jacobi 1.44×, Matmul fine 1.49×, SparseLU 1.23×. With our cost rule: 1.00×, 1.03× and 1.05×.',
+  open:'Remote execution raises SparseLU\'s average miss from about 650 to 1130 cycles; it still finishes sooner. Fix 2 rerun pending for the coarse cases.'},
+ {n:'Hotspot 3',t:'Repeated locality cost calculation',
+  p:'Algorithm 1 tries every node as a destination and weighs the task\'s data by distance. It runs again for every task: O(N²) per task.',
+  how:'<ul><li><b>Distances once:</b> the hop table, distance table and steal order are computed at start-up by BFS.</li><li><b>Small at our scale:</b> 8 × 8 = 64 multiply-adds per qualifying task.</li><li><b>Skipped</b> for small or evenly spread tasks (Hotspot 1\'s early exit).</li><li><b>Ours:</b> in cost mode one footprint pass feeds both Algorithm 1 and the steal-cost numbers, so the data is walked once.</li></ul>',
+  m:'Footprint work: one table lookup per dependence for coarse data, one step per 4 KiB page for fine data.',
+  open:'Still per task and still N²; the allocation table sits behind one lock. Next: cache the result for tasks that list the same blocks.'}
+];
+
+const MATHS = [
+ ['Map','v<sub>j</sub> ← 1.0001 · v<sub>j</sub> + 0.5','32,768 elements × 2 flops = 65,536 flops','48','3.1 M flops','its own 128 KiB vector','coarse','coarse (profile rule)'],
+ ['Vecmul','c = a × b (cross product: 6 multiplies, 3 subtracts per element)','5,461 elements × 9 = 49,149 flops','48','2.4 M flops','three 64 KiB arrays (a, b, c)','coarse','coarse (profile rule)'],
+ ['Matmul','C<sub>ij</sub> += Σ<sub>k</sub> A<sub>ik</sub> · B<sub>kj</sub> on 48 × 48 blocks','8 block products × 48³ = 884,736 multiply-adds','64','56.6 M multiply-adds (384³)','1 C + 8 A + 8 B blocks of 9 KiB (153 KiB)','coarse','coarse (size rule: 9 KiB &lt; 8 pages)'],
+ ['Jacobi','u′<sub>i,j</sub> = ¼ (u<sub>i−1,j</sub> + u<sub>i+1,j</sub> + u<sub>i,j−1</sub> + u<sub>i,j+1</sub>)','128 × 128 cells × 4 flops = 65,536 flops','64 per sweep × 2','8.4 M flops','own 64 KiB tile + up to 4 neighbours (up to 384 KiB)','fine','fine (profile rule)'],
+ ['Reduction','merge two sorted runs: one compare + one move per element','2,097,152 elements per level, split over the level\'s tasks','32+16+8+4+2+1 = 63','12.6 M compare-moves (6 levels)','two runs inside one 8 MiB array','fine','fine (profile rule)'],
+ ['SparseLU','lu0, fwd, bdiv, bmod; bmod: A<sub>ij</sub> −= A<sub>ik</sub> · A<sub>kj</sub>','bmod 32³ = 32,768 multiply-adds; fwd and bdiv about 16,000','472','about 13 M multiply-adds','2 or 3 blocks of 4 KiB (8 to 12 KiB)','coarse','coarse (size rule)']
+];
+const RTMATHS = [
+ ['Topology','hops(a,b) by BFS over links: same socket, or both even, or both odd. dist = 10 + 6 · hops','8 BFS over 8 nodes','once, at start-up'],
+ ['Latency model','lat(h) = 151 + 92 · h → 151 / 243 / 335 cycles (ratio 1 : 1.61 : 2.22, paper 10 : 16 : 22)','measured by our latency probe','once'],
+ ['Footprint D[j]','bytes of the task\'s dependence ranges on node j; coarse: whole range to its node; fine: page p → node p mod 8','1 binary search per dependence (coarse), 1 step per 4 KiB page (fine)','every task (locality-aware)'],
+ ['Algorithm 1 test','Σ<sub>j</sub> D[j] &gt; LLC / cores = 384 KiB / 6 = 64 KiB &nbsp;and&nbsp; σ(D) &gt; 0','8 adds and compares','every task'],
+ ['Algorithm 1 placement','q* = argmin<sub>l</sub> Σ<sub>j</sub> D[j] · dist(l, j)','8 × 8 = 64 multiply-adds','tasks that pass the test'],
+ ['Algorithm 2 (paper)','steal from Q<sub>i</sub> if |Q<sub>i</sub>| &gt; dist(i, n) · 6; we use hops (6 or 12), OS values give 96 or 132','1 compare per victim, at most 7','idle cores'],
+ ['Cost rule (ours)','H[a] = Σ<sub>j</sub> lines<sub>j</sub> · hops(a, j); penalty = 92 · (H[me] − H[i]); backlog = |Q<sub>i</sub>| − idle<sub>i</sub>; steal if backlog · T / 6 &gt; penalty','H: 64 multiply-adds at creation; check: 2 multiplies','creation; idle cores'],
+ ['Task time T (ours)','T = Σ task cycles / tasks finished; before the first finishes, T = lines · 151','2 atomic adds per task','every task'],
+ ['Adaptive policy (ours)','coarse if size &lt; 8 × 4 KiB, or touched / (tasks × size) ≥ 0.5; else fine','1 division per allocation; profile: 1 lookup per dependence','allocation time'],
+ ['Metrics','time = ROI cycles(config) / ROI cycles(ws-numactl); miss latency = Ruby sequencer mean miss latency','from gem5 stats.txt','every run']
+];
+const CMP = [
+ ['g','Platform'],
+ ['Machine','Real 4-socket AMD Opteron 6172 server','gem5 model of the same machine (SE mode)'],
+ ['Cores and NUMA nodes','48 cores, 8 nodes (6 per die)','48 cores, 8 nodes (6 per die)'],
+ ['CPU core','2.1 GHz, out-of-order (Magny-Cours)','2.1 GHz, in-order X86TimingSimpleCPU'],
+ ['Caches','64 KiB L1D, 512 KiB L2 per core, 5 MiB shared L3 per die','16 KiB L1D, 64 KiB L2 per core, no L3 (scaled down with the inputs)'],
+ ['Coherence','HyperTransport with HT Assist probe filter','Ruby MOESI_hammer with full directory'],
+ ['Interconnect','HyperTransport links; OS distances 10 / 16 / 22','NumaOpteron topology, 45-cycle hops; measured 151 / 243 / 335 cycles (1 : 1.61 : 2.22)'],
+ ['Memory','DDR3 per die','256 MiB DDR3-1600 controller per node'],
+ ['Page placement','Linux, libnuma, numactl','our ~220-line gem5 patch: first-touch, mbind, interleave, get_mempolicy, getcpu node'],
+ ['g','Software'],
+ ['Runtime','MIR task runtime','our C runtime numa_rt (runtime/numa_rt.c)'],
+ ['Task model','OpenMP tasks with depend clauses','rt_task with a depend list (used only for the footprint), taskwait ordering as in BOTS'],
+ ['Work queues','Chase-Lev lock-free deque in the baseline','one locked deque implementation for both schedulers, so only task placement differs'],
+ ['Idle cores','not described','exponential back-off, then futex sleep'],
+ ['g','Algorithms'],
+ ['Algorithm 1 (work dealing)','argmin over nodes of distance-weighted footprint, threshold LLC / cores','same rule and threshold (64 KiB here)'],
+ ['Algorithm 2 (work finding)','steal if queue &gt; OS distance × cores per node','hop count × cores per node; OS and no-limit as options'],
+ ['Algorithm 3 (TILEPro64)','yes','no (the chip is no longer available)'],
+ ['Cost-aware stealing','<span class="no">no</span>','<span class="yes">yes</span>, Improvement 1 (RT_STEAL_DIST=cost)'],
+ ['Adaptive distribution','<span class="no">no</span>, chosen by hand (Table 4 guidance)','<span class="yes">yes</span>, Improvement 2 (size rule + profile rule)'],
+ ['Distance tables','from the OS','BFS at start-up, cached for every task'],
+ ['g','Data distribution'],
+ ['Policies','standard, fine, coarse','standard, fine, coarse, adaptive, plus the numactl interleave baseline'],
+ ['g','Benchmarks and inputs'],
+ ['Map','48 × 1 MiB','48 × 128 KiB'],
+ ['Vecmul','128 × 28 KiB (TILEPro64)','48 tasks × 3 × 64 KiB'],
+ ['Matmul','4096², block 128','384², block 48'],
+ ['Jacobi','16384², block 512','1024², block 128, 2 sweeps (plus a 4096² check)'],
+ ['SparseLU','8192², block 256','16 × 16 blocks of 32²'],
+ ['Reduction','256 MiB, depth 10','8 MiB, depth 6'],
+ ['Tasks per core','about 20','about 1.3 (up to 21 in the paper-scale Jacobi run)'],
+ ['g','Experiments'],
+ ['Repetitions','20 per configuration','1 (gem5 is deterministic)'],
+ ['Runs','not stated','over 170 gem5 simulations on a 24-core HP Z2 workstation'],
+ ['Metrics','execution time normalised to the numactl baseline','the same, plus Ruby average memory miss latency and steal counts'],
+ ['g','Results'],
+ ['Map, locality-aware + coarse','clear win','<span class="yes">agrees</span>: 0.82× (0.87× in the improvements build), misses 314 → 160 cycles'],
+ ['Fine vs numactl','fine is a workable replacement','<span class="yes">agrees</span>: within 5% on all 6 benchmarks'],
+ ['Matmul with fine','slower','<span class="yes">agrees</span>: 1.49×'],
+ ['Jacobi and SparseLU','equal or better','<span class="no">differs</span>: 1.44× and 1.23× slower with the paper rule (too few tasks); Jacobi 1.03× at paper scale'],
+ ['With our cost-aware stealing','n/a','Jacobi 1.00×, Matmul fine 1.03×, SparseLU 1.05×, Reduction coarse 0.95×'],
+ ['With our adaptive distribution','n/a','matches the best hand pick on 4 of 6 benchmarks with no human choice'],
+ ['g','Extra studies'],
+ ['Scaling and links','not studied','2 and 4 nodes; twice as slow links: Map 0.70×, Vecmul 0.85×'],
+ ['Steal rule variants','not studied','OS distance: 0 steals, up to 5.47×; no limit: about 1.00×'],
+ ['GPU analogue','not studied','RTX 4000 Ada: on-demand migration kernel 36.0 ms vs prefetch 1.7 ms']
+];
+// ---------------- page sections (no 3D needed) ----------------
+const $ = id => document.getElementById(id);
+const f2 = x => x.toFixed(2) + '×';
+$('hsCards').innerHTML = HOTSPOTS.map(h => `<div class="card"><span class="tag">${h.n}</span><h3>${h.t}</h3><p>${h.p}</p><dl><dt>How our model handles it</dt><dd>${h.how}</dd><dt>What we measured</dt><dd>${h.m}</dd><dt>Still open</dt><dd>${h.open}</dd></dl></div>`).join('');
+
+const MAXV = 1.6, pct = v => Math.min(100, v / MAXV * 100);
+const base = `<span class="base" style="left:${100 / MAXV}%"></span>`;
+const bar = (v, col) => `<div class="bar">${base}<i style="width:${pct(v)}%;background:${col}"></i></div>`;
+function r1draw(k) {
+  const R = ROUNDS[k];
+  [...$('r1seg').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k));
+  $('r1note').textContent = R.note;
+  if (R.pending) { $('r1chart').innerHTML = '<p>Waiting for the gem5 rerun. Rounds 1 and Fix 1 are shown with the buttons above.</p>'; return; }
+  $('r1chart').innerHTML = BN.map((b, i) => `<div style="margin-top:6px"><b>${BNAME[b]}</b></div>
+    <div class="r"><span>paper, fine</span>${bar(PAPER.fine[i], '#9aa7a0')}<span class="num">${f2(PAPER.fine[i])}</span></div>
+    <div class="r"><span>ours, fine</span>${bar(R.fine[i], 'var(--local)')}<span class="num">${f2(R.fine[i])}</span></div>
+    <div class="r"><span>paper, coarse</span>${bar(PAPER.coarse[i], '#5f6e66')}<span class="num">${f2(PAPER.coarse[i])}</span></div>
+    <div class="r"><span>ours, coarse</span>${bar(R.coarse[i], '#178a6c')}<span class="num">${f2(R.coarse[i])}</span></div>`).join('');
+}
+$('r1seg').innerHTML = Object.entries(ROUNDS).map(([k, r]) => `<button data-k="${k}">${r.name}</button>`).join('');
+$('r1seg').onclick = e => { const b = e.target.closest('button'); if (b) r1draw(b.dataset.k); };
+r1draw('r1');
+$('r2chart').innerHTML = BN.map((b, i) => `<div style="margin-top:6px"><b>${BNAME[b]}</b></div>
+  <div class="r"><span>fine</span>${bar(PAPER.fine[i], '#9aa7a0')}<span class="num">${f2(PAPER.fine[i])}</span></div>
+  <div class="r"><span>coarse</span>${bar(PAPER.coarse[i], '#5f6e66')}<span class="num">${f2(PAPER.coarse[i])}</span></div>
+  <div class="r"><span>adaptive (${ADAPT.ch[i]})</span>${bar(ADAPT.t[i], 'var(--local)')}<span class="num">${f2(ADAPT.t[i])}</span></div>`).join('');
+$('timeline').innerHTML = [
+  ['Round 1', 'All 42 gem5 runs correct. Jacobi 1.44× → 1.01×, Matmul fine 1.49× → 1.01×, SparseLU 1.23× → 1.05×. Map fine 1.16× → 1.54× (no task-time estimate at the start).'],
+  ['Fix 1', 'Estimate task time from its footprint before the first task ends. Map fine back to 1.17×, wins kept; Map and Vecmul coarse broke (1.32×, 1.42×).'],
+  ['Cause found', 'A refused steal took the task out and put it back; the victim\'s cores saw an empty queue and slept with work still waiting.'],
+  ['Fix 2', 'Check the task inside the queue under its lock, take it only if accepted, and only steal from nodes with no idle cores. gem5 rerun in progress.']
+].map(([a, b]) => `<div><b>${a}</b>${b}</div>`).join('');
+$('tMaths').innerHTML = '<thead><tr><th>Benchmark</th><th>Operation</th><th>Work per task</th><th>Tasks</th><th>Total work</th><th>Task footprint</th><th>Paper guidance</th><th>Adaptive chose</th></tr></thead><tbody>' +
+  MATHS.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td>${r[6]}</td><td>${r[7]}</td></tr>`).join('') + '</tbody>';
+$('tRtMaths').innerHTML = '<thead><tr><th>Step</th><th>Formula</th><th>Work</th><th>When</th></tr></thead><tbody>' +
+  RTMATHS.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('') + '</tbody>';
+$('tCmp').innerHTML = '<thead><tr><th>Aspect</th><th>Base paper (2015)</th><th>Our model</th></tr></thead><tbody>' +
+  CMP.map(r => r[0] === 'g' ? `<tr class="grp"><td colspan="3">${r[1]}</td></tr>` : `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('') + '</tbody>';
+
+// ---------------- simulator state ----------------
+const S = window.NumaSim;
+let SIM = null, simT = 0, playing = !matchMedia('(prefers-reduced-motion: reduce)').matches, speed = 1;
+const baseCache = {};
+function rel(b, s, p) { if (!baseCache[b]) baseCache[b] = S.simulate(b, 'ws', 'numactl').makespan; return S.simulate(b, s, p).makespan / baseCache[b]; }
+function gemFor(b, s, p) {
+  const key = (s === 'ws' && p === 'adaptive') ? null : `${s}-${p}`;
+  const v = key && GEM[b][key];
+  if (v === undefined || v === null) return 'not run in gem5';
+  return Array.isArray(v) ? `gem5 ${f2(v[0])} (round 1), ${f2(v[1])} (fix 1)` : `gem5 ${f2(v)}`;
+}
+function fmtCyc(c) { return c >= 1e6 ? (c / 1e6).toFixed(2) + ' M cyc' : (c / 1e3).toFixed(0) + ' k cyc'; }
+function loadSim() {
+  const b = $('sBench').value, s = $('sSched').value; let p = $('sPol').value;
+  SIM = S.simulate(b, s, p); simT = 0;
+  SIM.byCore = [...Array(48)].map(() => []);
+  SIM.runs.forEach(r => SIM.byCore[r.core].push(r));
+  SIM.starts = SIM.runs.slice().sort((a, b) => a.start - b.start); SIM.si = 0;
+  SIM.rel = rel(b, s, p);
+  const pols = p === 'numactl' ? ['numactl'] : [p];
+  $('cmpRows').innerHTML = [['ws', 'Work-stealing'], ['hops', 'Paper rule'], ['cost', 'Cost-aware (ours)']].map(([k, n]) => {
+    const pp = (k === 'ws' && p === 'adaptive') ? 'numactl' : p;
+    const v = rel(b, k, pp);
+    return `<div class="meter"><span>${n}</span><div class="bar"><i style="width:${Math.min(100, v / 2 * 100)}%;background:${k === s ? 'var(--copper)' : '#7f9c8e'}"></i></div><span class="num">${f2(v)}</span></div><div class="note" style="margin:-2px 0 4px">${gemFor(b, k, pp)}</div>`;
+  }).join('');
+  $('gemNote').textContent = 'Simulated (simplified model) next to the measured gem5 value. Baseline = work-stealing + numactl interleave = 1.00×.';
+  if (window.onSimLoaded) window.onSimLoaded();
+}
+function setSim(b, s, p) { $('sBench').value = b; $('sSched').value = s; $('sPol').value = p; loadSim(); }
+['sBench', 'sSched', 'sPol'].forEach(id => $(id).onchange = loadSim);
+$('sRestart').onclick = () => { simT = 0; if (SIM) SIM.si = 0; if (window.onSimLoaded) window.onSimLoaded(); };
+const setPlayBtn = () => { $('sPlay').textContent = playing ? 'Pause' : 'Play'; };
+$('sPlay').onclick = () => { playing = !playing; setPlayBtn(); }; setPlayBtn();
+$('sSpeed').oninput = e => { speed = +e.target.value; $('spdV').textContent = speed + '×'; };
+function updatePanel() {
+  if (!SIM) return;
+  let done = 0, st = 0, lat = 0, lines = 0; const per = Array(8).fill(0), perSt = Array(8).fill(0);
+  for (const r of SIM.runs) if (r.start <= simT) {
+    if (r.end <= simT) done++;
+    if (r.kind !== 'own' && r.from !== r.node) st++;
+    per[r.node]++; if (r.kind !== 'own') perSt[r.node]++;
+    for (let j = 0; j < 8; j++) { lat += r.D[j] * S.LAT[S.HOPS[r.node][j]]; lines += r.D[j]; }
+  }
+  const fin = simT >= SIM.makespan;
+  $('kT').textContent = fmtCyc(Math.min(simT, SIM.makespan));
+  $('kDone').textContent = `${done} / ${SIM.tasks}`;
+  $('kSt').textContent = st;
+  $('kRej').textContent = SIM.sched === 'cost' ? Math.round(SIM.rejected * Math.min(1, simT / SIM.makespan)) : 'n/a';
+  $('kLat').textContent = lines ? Math.round(lat / lines) + ' cyc' : '…';
+  $('kRel').textContent = fin ? f2(SIM.rel) : '…';
+  const mx = Math.max(6, ...per);
+  $('perNode').innerHTML = per.map((c, i) => `<div class="meter"><span>Node ${i}</span><div class="bar"><i style="width:${(c - perSt[i]) / mx * 100}%;background:var(--local)"></i><i style="width:${perSt[i] / mx * 100}%;background:var(--steal)"></i></div><span class="num">${c}</span></div>`).join('');
+}
+
+// ---------------- guide ----------------
+const CH = ['Introduction and objectives', 'Individual contributions', 'Experimental setup', 'Metrics and results', 'Limitations, future scope, observations'];
+const CHS = ['Intro', 'Team', 'Setup', 'Results', 'Outlook'];
+const STEPS = [
+ {c:0,t:'Why NUMA matters',cam:'OV',sel:0,sim:['map','ws','numactl'],
+  b:'<p>In a big server, memory is split between sockets. A core reads its own node\'s memory fast; memory on another node travels across links between chips.</p><p>On our machine a local read costs <b>151 cycles</b>, one hop <b>243</b>, two hops <b>335</b>: up to 2.2 times slower.</p>',
+  see:'The baseline is running: work-stealing with pages interleaved over all 8 nodes. Every task starts in core 0\'s queue, so the other cores steal it (purple). Most memory requests (dots) are amber or red because they cross links.'},
+ {c:0,t:'The paper\'s idea',cam:'OV',sim:['map','hops','coarse'],
+  b:'<p>Muddukrishna, Jonsson and Brorsson (2015):</p><ul><li><b>Place data on purpose:</b> fine spreads pages over all nodes; coarse keeps a whole allocation on one node.</li><li><b>Schedule near the data:</b> Algorithm 1 sends each task to the node holding most of its data; Algorithm 2 lets idle cores steal from far nodes only when those have plenty of work.</li></ul>',
+  see:'Locality-aware + coarse on Map: each node\'s queue (purple stack) gets its own tasks, cores stay green and requests stay local.'},
+ {c:0,t:'Project objectives',cam:'SIDE',sim:['jacobi','cost','fine'],
+  b:'<ul><li>Build the paper\'s 8-node, 48-core NUMA machine in gem5 with the same distance ratios.</li><li>Implement both schedulers and the fine and coarse distributions in our own runtime.</li><li>Reproduce Figure 7 and explain every difference.</li><li><b>Go beyond the paper:</b> cost-aware stealing and adaptive data distribution, both implemented and measured.</li></ul>',
+  see:'Our cost-aware scheduler on Jacobi: work spreads to every node (purple cores are running stolen tasks).'},
+ {c:1,t:'Individual contributions',cam:'LOW',sim:['map','hops','coarse'],
+  b:'<div class="who">'+[
+   ['Siddharth K · S20240030402','Hotspot 2: load imbalance','Most tasks sat in one node\'s queue while far cores did nothing. Jacobi ran 1.44× slower than the baseline.','Made idle cores steal only when it saves time (cost-aware stealing).','Jacobi 1.44× → 1.00×, Matmul 1.49× → 1.03×, SparseLU 1.23× → 1.05×.'],
+   ['G Hemanth · S20240010081','Hotspot 1: scheduling overhead','Every task ran the placement check, and idle cores wasted time looking for work.','Small tasks skip the check, the runtime looks data up in its own table instead of asking the OS, and idle cores sleep.','SparseLU\'s 472 small tasks skip the check entirely.'],
+   ['GV Tejoram · S20240010069','Hotspot 3: repeated cost calculation','The "which node is best" maths ran again for every task.','Distances are calculated once at start-up, and the runtime picks fine or coarse data placement by itself.','Only 64 small calculations per task, and Matmul went from 1.49× to 0.99×.']
+  ].map(p=>`<div><b>${p[0]}</b><span class="hsn">${p[1]}</span><ul><li><b class="il">Found:</b> ${p[2]}</li><li><b class="il">Fixed:</b> ${p[3]}</li><li><b class="il">Result:</b> ${p[4]}</li></ul></div>`).join('')+'</div>',
+  see:'The machine all three hotspot fixes run on.'},
+ {c:2,t:'Simulation setup',cam:'OV',sim:['map','ws','numactl'],
+  b:'<p><b>gem5</b> in system-call emulation mode, Ruby <b>MOESI_hammer</b> coherence with a full directory, like AMD\'s Opteron. 48 in-order X86 cores at 2.1 GHz.</p><p>Stock gem5 puts every page in one pool. Our ~220-line patch makes each page live on a real node: first-touch, <code>mbind</code>, interleave, <code>get_mempolicy</code> and the node from <code>getcpu</code> all work.</p>',
+  see:'Each blue stick is one node\'s 256 MiB DRAM; the patch decides which stick every page lands on.'},
+ {c:2,t:'One node up close',cam:'N0',sel:0,sim:['map','hops','coarse'],
+  b:'<ul><li><b>6 cores</b> (C0 to C5), in-order x86.</li><li><b>Caches</b> (gold plates): 16 KiB L1D and 64 KiB L2 per core, no L3.</li><li><b>Router</b> (copper disc) to the links.</li><li><b>DRAM</b> (blue): one DDR3-1600 controller, 256 MiB.</li><li><b>Task queue</b> (purple stack): the node\'s queue in the locality-aware scheduler.</li></ul>',
+  see:'Zoomed into node 0: cores, caches, router, memory and its queue.'},
+ {c:2,t:'The links between nodes',cam:'TOP',sel:0,sim:['map','ws','numactl'],
+  b:'<p>The two dies of a socket are joined, all even nodes are joined, all odd nodes are joined. From node 0, nodes 1, 2, 4 and 6 are <b>1 hop</b> away, nodes 3, 5 and 7 are <b>2 hops</b>.</p><p>Our latency probe measured 151 / 243 / 335 cycles: <b>1.00 : 1.61 : 2.22</b>, matching the paper\'s 10 : 16 : 22.</p>',
+  see:'Top view of the copper links, tinted by hops from node 0.'},
+ {c:2,t:'Datasets (workloads)',cam:'SIDE',sim:['matmul','hops','fine'],
+  b:'<p>Six benchmarks from the paper\'s Table 4; their data is generated inside each program and scaled down so gem5 finishes in minutes:</p><ul><li>Map 48 × 128 KiB · Vecmul 48 tasks × 3 × 64 KiB</li><li>Matmul 384², blocks of 48 · Jacobi 1024², tiles of 128</li><li>Reduction 8 MiB sort-merge · SparseLU 16 × 16 blocks of 32²</li></ul><p>The maths of each one is in the table further down.</p>',
+  see:'Matmul with fine: its small 9 KiB blocks only reach nodes 0 to 2, so most requests are remote.'},
+ {c:2,t:'Configurations and runs',cam:'OV',sim:['jacobi','hops','fine'],
+  b:'<p>Schedulers: work-stealing, locality-aware (paper rule) and ours (cost-aware). Placements: numactl interleave, fine, coarse, first-touch and ours (adaptive).</p><p>Over <b>170 gem5 runs</b> on a 24-core HP Z2 workstation. gem5 is deterministic, so one run per configuration is exact; every run checks its own result.</p>',
+  see:'The same machine for every configuration; only where data and tasks go changes.'},
+ {c:3,t:'Metric and baseline',cam:'OV',sim:['map','ws','numactl'],
+  b:'<p><b>Metric:</b> simulated time of the parallel region divided by the baseline (lower is better), plus the average memory miss latency and steal counts.</p><p><b>Baseline:</b> work-stealing with every page interleaved over the 8 nodes. Whatever core runs a task, 7 of 8 misses cross a link.</p>',
+  see:'Baseline running: requests mostly amber and red.'},
+ {c:3,t:'Locality-aware + coarse wins',cam:'OV',sim:['map','hops','coarse'],
+  b:'<p>Each Map vector sits whole on one node and Algorithm 1 runs its task there. In gem5: <b>0.82×</b> time, average miss <b>314 → 160 cycles</b>, almost the 151-cycle local minimum. Fine alone stays within 5% of the baseline on all six benchmarks.</p>',
+  see:'Almost every request is green: fetched from the core\'s own node.'},
+ {c:3,t:'Where the paper rule loses',cam:'SIDE',sim:['jacobi','hops','fine'],
+  b:'<p>On Jacobi all 64 tasks land in node 0\'s queue. Algorithm 2 lets a node steal only when that queue holds more than distance × 6 tasks, so far nodes get little work.</p><p>gem5: Jacobi <b>1.44×</b>, SparseLU <b>1.23×</b>, Matmul fine <b>1.49×</b>. With the OS distance values (96, 132 tasks) there are 0 steals and up to 5.47×.</p>',
+  see:'Watch node 0\'s tall queue and the idle grey cores on far nodes.'},
+ {c:3,t:'Our fix: cost-aware stealing',cam:'SIDE',sim:['jacobi','cost','fine'],
+  b:'<p>Improvement 1 steals when the waiting work would take longer than the extra memory time of running it remotely.</p><p>gem5: Jacobi <b>1.44× → 1.00×</b>, Matmul fine <b>1.49× → 1.03×</b>, SparseLU <b>1.23× → 1.05×</b>, Reduction coarse <b>0.95×</b>. The full story, including the two bugs we found and fixed, is further down.</p>',
+  see:'Same Jacobi run with our rule: every node gets work, purple cores run stolen tasks.'},
+ {c:3,t:'Our fix: adaptive distribution',cam:'OV',sim:['matmul','hops','adaptive'],
+  b:'<p>Improvement 2 picks fine or coarse per allocation from evidence. It chose coarse for Map, Vecmul, Matmul and SparseLU and fine for Jacobi and Reduction, matching the paper\'s guidance with no human choice.</p><p>gem5: Matmul <b>1.49× (fine) → 0.99×</b>; best hand pick matched on 4 of 6.</p>',
+  see:'Matmul with adaptive: blocks are kept whole on one node, so requests turn green compared with fine.'},
+ {c:3,t:'Slower links, bigger win',cam:'OV',sim:['map','hops','coarse'],
+  b:'<p>Doubling the link delay (45 → 90 cycles a hop): locality-aware + coarse reaches <b>0.70×</b> on Map, 0.85× on Vecmul. The win also grows with node count.</p><p>GPU analogue (RTX 4000 Ada, 256 MB): on-demand page migration kernel 36.0 ms, prefetched 1.7 ms.</p>',
+  see:'The more expensive remote trips are, the more keeping requests green is worth.'},
+ {c:4,t:'Limitations',cam:'SIDE',sim:['sparselu','cost','adaptive'],
+  b:'<ul><li>Simulation, not real hardware; in-order cores feel every miss.</li><li>No L3 cache in MOESI_hammer.</li><li>Inputs 8 to 256 times smaller, so far fewer tasks per core.</li><li>Improvement 1\'s Fix 2 rerun is still running; Improvement 2 needs a profile run first and does not move pages after allocation.</li><li>The simulator on this page is a simplified model.</li></ul>',
+  see:'SparseLU with both improvements: faster, but many tasks run away from their data.'},
+ {c:4,t:'Key observations',cam:'OV',sim:['jacobi','hops','fine'],
+  b:'<ul><li>The gaps from the paper come from too few tasks for its steal rule.</li><li>A fixed task-count threshold cannot be right for every workload; comparing times can.</li><li>The locality win grows with node count and with link latency.</li><li>Fine is a safe replacement for numactl interleave.</li><li>Building the cost rule exposed two real runtime bugs: decisions made before any measurement, and work hidden from its own node.</li></ul>',
+  see:'The idle far cores are the single biggest lesson.'},
+ {c:4,t:'Future scope',cam:'OV',sim:['jacobi','cost','fine'],
+  b:'<ul><li>Finish the Fix 2 runs and add the paper-scale Jacobi check with both improvements.</li><li>Move pages online (migration) so the adaptive policy can switch mid-run.</li><li>Cache Algorithm 1\'s result for tasks that list the same blocks.</li><li>A lock-free deque, a second simulator, and a real multi-socket server.</li></ul>',
+  see:'The goal: all cores busy and requests as green as possible.'}
+];
+// ---------------- 3D machine ----------------
+const fig = $('fig'), cv = $('cv'), LB = $('labels');
+let step = 0, sel = -1;
+const chap = $('chap');
+chap.innerHTML = CHS.map((c, i) => `<button data-c="${i}" title="${CH[i]}">${i + 1}<br>${c}</button>`).join('');
+chap.onclick = e => { const b = e.target.closest('button'); if (b) go(STEPS.findIndex(s => s.c === +b.dataset.c)); };
+$('dots').innerHTML = STEPS.map(() => '<i></i>').join('');
+let fly = () => {}, paint = () => {};
+function go(i) {
+  step = Math.max(0, Math.min(STEPS.length - 1, i)); const St = STEPS[step];
+  $('gStep').textContent = `Chapter ${St.c + 1} · ${CH[St.c]} · step ${step + 1} of ${STEPS.length}`;
+  $('gTitle').textContent = St.t; $('gBody').innerHTML = St.b; $('gSee').innerHTML = '<b>On screen:</b> ' + St.see;
+  [...chap.children].forEach((b, k) => b.setAttribute('aria-pressed', k === St.c));
+  [...$('dots').children].forEach((d, k) => d.className = k === step ? 'on' : '');
+  $('prev').disabled = step === 0; $('next').textContent = step === STEPS.length - 1 ? 'Start again' : 'Next';
+  sel = St.sel === undefined ? -1 : St.sel;
+  setSim(...St.sim); paint(); fly(St.cam);
+}
+$('prev').onclick = () => go(step - 1);
+$('next').onclick = () => go(step === STEPS.length - 1 ? 0 : step + 1);
+document.addEventListener('keydown', e => { if (e.target.closest('input,select,textarea')) return; if (e.key === 'ArrowRight') go(step + 1); if (e.key === 'ArrowLeft') go(step - 1); });
+
+if (!window.THREE) {
+  $('hint').textContent = '3D view could not load (the 3D library needs the network). The guide, simulator numbers and tables still work.';
+  let last = performance.now();
+  const tick = now => { const dt = Math.min(0.05, (now - last) / 1000); last = now; if (playing && SIM) { simT += dt * speed * SIM.makespan / 14; if (simT > SIM.makespan * 1.08) simT = 0; } updatePanel(); requestAnimationFrame(tick); };
+  go(0); requestAnimationFrame(tick);
+} else {
+  const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(42, 1, 0.1, 400); cam.position.set(0, 30, 36);
+  const ctl = new THREE.OrbitControls(cam, cv); ctl.enableDamping = true; ctl.maxPolarAngle = 1.45; ctl.minDistance = 10; ctl.maxDistance = 90;
+  scene.add(new THREE.HemisphereLight(0xeaf6ff, 0x0b2a1e, 0.9));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.85); sun.position.set(12, 30, 18); scene.add(sun);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .55, metalness: .15 }, o));
+  const box = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  const board = box(50, 0.6, 36, M(0x14513a, { roughness: .9 })); board.position.y = -0.3; scene.add(board);
+  const SOCK = [[-11.5, -8], [11.5, -8], [-11.5, 8], [11.5, 8]];
+  const nodes = [], labelDefs = [];
+  function lab(text, pos, cls, show) { const el = document.createElement('div'); el.className = 'lbl ' + (cls || ''); el.innerHTML = text; LB.appendChild(el); const L = { el, pos, show: show || (() => true) }; labelDefs.push(L); return L; }
+  const qGeo = new THREE.BoxGeometry(0.9, 0.32, 0.9), qMat = M(0x9b8cff, { emissive: 0x2a2266 });
+  for (let s = 0; s < 4; s++) {
+    const [sx, sz] = SOCK[s];
+    const pkg = box(18, 0.5, 11.5, M(0x2b2f33, { metalness: .4 })); pkg.position.set(sx, 0.25, sz); scene.add(pkg);
+    lab('Socket ' + s, new THREE.Vector3(sx, 0.6, sz + 6.6), 'sock');
+    for (let d = 0; d < 2; d++) {
+      const id = 2 * s + d, x = sx + (d ? 4.4 : -4.4), z = sz;
+      const die = box(7.2, 0.35, 6.2, M(0x5b6670, { metalness: .55, roughness: .35 })); die.position.set(x, 0.68, z - 0.6); die.userData.node = id; scene.add(die);
+      const cores = [];
+      for (let c = 0; c < 6; c++) {
+        const cx = x - 2.3 + (c % 3) * 2.3, cz = z - 2 + Math.floor(c / 3) * 2.6;
+        const l2 = box(1.9, 0.12, 1.9, M(0xc9a95c, { metalness: .6 })); l2.position.set(cx, 0.92, cz); l2.userData.node = id; scene.add(l2);
+        const core = box(1.3, 0.7, 1.3, M(0x5d6663)); core.position.set(cx, 1.33, cz); core.userData.node = id; scene.add(core);
+        cores.push(core);
+        lab('C' + (id * 6 + c), new THREE.Vector3(cx, 1.95, cz), 'small', () => sel === id);
+      }
+      const rt = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 24), M(0xd0843f, { metalness: .7, roughness: .3 })); rt.position.set(x, 0.8, z + 3.6); scene.add(rt);
+      const dram = box(6.4, 1.4, 0.5, M(0x223a6b)); dram.position.set(x, 1.0, z + 4.9); scene.add(dram);
+      for (let k = 0; k < 8; k++) { const chip = box(0.6, 0.9, 0.12, M(0x111518)); chip.position.set(x - 2.8 + k * 0.8, 1.05, z + 5.18); scene.add(chip); }
+      // queue tower (left of the die)
+      const qx = x + (d ? 4.25 : -4.25), qz = z - 0.6, q = [];
+      for (let k = 0; k < 24; k++) { const m = new THREE.Mesh(qGeo, qMat); m.position.set(qx, 0.75 + k * 0.36, qz); m.visible = false; scene.add(m); q.push(m); }
+      const qLab = lab('', new THREE.Vector3(qx, 1.0, qz), 'q');
+      nodes.push({ id, x, z, die, cores, rt, dram, q, qLab, qx, qz, rp: rt.position.clone(), dp: new THREE.Vector3(x, 1.8, z + 4.9) });
+      lab(`<b>Node ${id}</b> · C${id * 6}–C${id * 6 + 5}`, new THREE.Vector3(x, 2.5, z - 4.2));
+      lab('Router', new THREE.Vector3(x - 1.9, 1.2, z + 3.6), 'small', () => sel === id);
+      lab('L1 + L2', new THREE.Vector3(x + 3.0, 1.0, z + 1.6), 'small', () => sel === id);
+      lab('256 MiB DRAM', new THREE.Vector3(x, 2.3, z + 4.9), 'small', () => sel === id);
+      lab('task queue', new THREE.Vector3(qx, 0.4, qz + 1.3), 'small', () => sel === id);
+    }
+  }
+  const links = [];
+  for (let a = 0; a < 8; a++) for (let b = a + 1; b < 8; b++) if ((a >> 1) === (b >> 1) || (a % 2) === (b % 2)) links.push([a, b]);
+  const adj = [...Array(8)].map(() => []); links.forEach(([a, b]) => { adj[a].push(b); adj[b].push(a); });
+  const curves = {};
+  links.forEach(([a, b]) => {
+    const A = nodes[a].rp, B = nodes[b].rp, mid = A.clone().add(B).multiplyScalar(.5); mid.y = 1.5 + A.distanceTo(B) * 0.22;
+    const cu = new THREE.QuadraticBezierCurve3(A.clone().setY(1.1), mid, B.clone().setY(1.1)); curves[a + '-' + b] = cu;
+    scene.add(new THREE.Mesh(new THREE.TubeGeometry(cu, 40, 0.09, 8, false), M(0xd0843f, { metalness: .8, roughness: .25, emissive: 0x2a1300 })));
+  });
+  function route(a, b) { const prev = Array(8).fill(-1), seen = Array(8).fill(false); seen[a] = true; const q = [a]; while (q.length) { const u = q.shift(); for (const v of adj[u]) if (!seen[v]) { seen[v] = true; prev[v] = u; q.push(v); } } const p = [b]; while (p[0] !== a) p.unshift(prev[p[0]]); return p; }
+  const HCOL = [0x2fbf9b, 0xe8b04a, 0xe0614f];
+  paint = () => { nodes.forEach(n => { const h = sel < 0 ? -1 : S.HOPS[sel][n.id]; n.die.material.emissive = new THREE.Color(h < 0 ? 0 : HCOL[h]); n.die.material.emissiveIntensity = h < 0 ? 0 : 0.55; }); };
+  const ray = new THREE.Raycaster(), mv = new THREE.Vector2(); let down = null;
+  cv.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+  cv.addEventListener('pointerup', e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return; const r = cv.getBoundingClientRect(); mv.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(mv, cam); const hit = ray.intersectObjects(scene.children).find(o => o.object.userData.node !== undefined); sel = hit ? hit.object.userData.node : -1; paint(); });
+
+  // particles (memory requests) and steal arcs
+  const parts = [], pg = new THREE.SphereGeometry(0.24, 10, 10), sg = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+  const pmats = HCOL.map(c => new THREE.MeshBasicMaterial({ color: c })), smat = new THREE.MeshBasicMaterial({ color: 0x9b8cff });
+  function pathFor(core, a, b) {
+    const pts = [core.position.clone().setY(1.9), nodes[a].rp.clone().setY(1.2)];
+    const r = route(a, b);
+    for (let i = 0; i < r.length - 1; i++) { const u = r[i], v = r[i + 1], cu = curves[u < v ? u + '-' + v : v + '-' + u]; let ps = cu.getPoints(14); if (u > v) ps = ps.reverse(); pts.push(...ps); }
+    pts.push(nodes[b].dp.clone()); return pts.concat(pts.slice(0, -1).reverse());
+  }
+  function addPart(pts, mat, geo, dur) { const lens = [0]; for (let i = 1; i < pts.length; i++) lens.push(lens[i - 1] + pts[i].distanceTo(pts[i - 1])); const m = new THREE.Mesh(geo, mat); m.position.copy(pts[0]); scene.add(m); parts.push({ m, pts, lens, t: 0, dur }); }
+  function clearParts() { parts.splice(0).forEach(p => scene.remove(p.m)); }
+  window.onSimLoaded = () => { clearParts(); };
+  function stealArc(r) {
+    const A = new THREE.Vector3(nodes[r.from].qx, 2.2, nodes[r.from].qz), B = nodes[r.node].cores[r.core % 6].position.clone().setY(1.9);
+    const mid = A.clone().add(B).multiplyScalar(.5); mid.y = 5 + A.distanceTo(B) * 0.25;
+    addPart(new THREE.QuadraticBezierCurve3(A, mid, B).getPoints(30), smat, sg, 0.9);
+  }
+  const VIEWS = { OV: [[0, 46, 33], [0, 0, 2]], SIDE: [[-38, 25, 31], [0, 0, 0]], TOP: [[0, 54, 12], [0, 0, 0]], N0: [[-16, 10, 5], [-16, 0.8, -8]], LOW: [[30, 16, 35], [0, 0, 0]] };
+  let tw = null; const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  fly = k => { const v = VIEWS[k]; tw = { t: 0, p0: cam.position.clone(), t0: ctl.target.clone(), p1: new THREE.Vector3(...v[0]), t1: new THREE.Vector3(...v[1]) }; const asp = fig.clientWidth / Math.max(1, fig.clientHeight), fct = k === 'N0' ? Math.max(1, 1.1 / asp) : Math.max(1, 1.45 / asp); tw.p1.sub(tw.t1).multiplyScalar(fct).add(tw.t1); };
+  function size() { const w = fig.clientWidth, h = fig.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  const ro = new ResizeObserver(size); ro.observe(fig); size();
+  const v3 = new THREE.Vector3();
+  function placeLabels() { const w = fig.clientWidth, h = fig.clientHeight; for (const L of labelDefs) { if (!L.show() || !L.el.innerHTML) { L.el.style.display = 'none'; continue; } v3.copy(L.pos).project(cam); if (v3.z > 1) { L.el.style.display = 'none'; continue; } L.el.style.display = ''; L.el.style.left = ((v3.x + 1) / 2 * w) + 'px'; L.el.style.top = ((1 - v3.y) / 2 * h) + 'px'; } }
+  const C_OWN = new THREE.Color(0x1fae86), C_ST = new THREE.Color(0x7b63f0), C_IDLE = new THREE.Color(0x5d6663);
+  function qlenAt(t) { const ql = SIM.qlog; let lo = 0, hi = ql.length - 1, k = 0; while (lo <= hi) { const m = (lo + hi) >> 1; if (ql[m].t <= t) { k = m; lo = m + 1; } else hi = m - 1; } return ql[k]; }
+  let last = performance.now(), acc = 0, panelTick = 0;
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (tw) { tw.t = Math.min(1, tw.t + dt / (reduce ? 0.01 : 1.2)); const e = tw.t < .5 ? 2 * tw.t * tw.t : 1 - (-2 * tw.t + 2) ** 2 / 2; cam.position.lerpVectors(tw.p0, tw.p1, e); ctl.target.lerpVectors(tw.t0, tw.t1, e); if (tw.t >= 1) tw = null; }
+    ctl.update();
+    if (SIM) {
+      if (playing) { simT += dt * speed * SIM.makespan / 14; if (simT > SIM.makespan * 1.12) { simT = 0; SIM.si = 0; clearParts(); } }
+      // cores
+      const running = [];
+      for (let c = 0; c < 48; c++) {
+        const r = SIM.byCore[c].find(x => x.start <= simT && simT < x.end);
+        const col = r ? (r.kind === 'own' ? C_OWN : C_ST) : C_IDLE;
+        const mesh = nodes[c / 6 | 0].cores[c % 6]; mesh.material.color.copy(col); mesh.material.emissive.copy(r ? col : C_IDLE).multiplyScalar(r ? 0.12 : 0);
+        if (r) running.push(r);
+      }
+      // queues
+      const ql = qlenAt(simT);
+      nodes.forEach((n, i) => { const len = SIM.sched === 'ws' ? (i === 0 ? ql.c : 0) : ql.q[i]; n.q.forEach((m, k) => m.visible = k < Math.min(24, len)); n.qLab.pos.y = 1.0 + Math.min(24, len) * 0.36 + 0.4; n.qLab.el.innerHTML = len ? String(len) : ''; });
+      // steals that just started
+      while (SIM.si < SIM.starts.length && SIM.starts[SIM.si].start <= simT) { const r = SIM.starts[SIM.si++]; if (playing && r.kind !== 'own' && r.from !== r.node && parts.length < 220) stealArc(r); }
+      // memory requests
+      if (playing) { acc += dt * Math.min(2, speed); while (acc > 0.05) { acc -= 0.05; for (let k = 0; k < 3 && running.length && parts.length < 200; k++) { const r = running[(Math.random() * running.length) | 0]; let x = Math.random() * r.D.reduce((s, y) => s + y, 0), j = 0; while (j < 7 && x > r.D[j]) { x -= r.D[j]; j++; } const h = S.HOPS[r.node][j]; addPart(pathFor(nodes[r.node].cores[r.core % 6], r.node, j), pmats[h], pg, S.LAT[h] / 151 * 1.3); } } }
+      for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.t += dt / p.dur; if (p.t >= 1) { scene.remove(p.m); parts.splice(i, 1); continue; } const d = p.t * p.lens.at(-1); let k = 1; while (k < p.lens.length - 1 && p.lens[k] < d) k++; const s = (d - p.lens[k - 1]) / Math.max(1e-6, p.lens[k] - p.lens[k - 1]); p.m.position.lerpVectors(p.pts[k - 1], p.pts[k], Math.min(1, s)); }
+      if (++panelTick % 6 === 0) updatePanel();
+      $('hud').innerHTML = `<span>${S.BENCH[SIM.bench].name}</span><span>${{ ws: 'Work-stealing', hops: 'Paper rule', cost: 'Cost-aware (ours)' }[SIM.sched]}</span><span>${$('sPol').selectedOptions[0].textContent}${$('sPol').value === 'adaptive' ? ' → ' + SIM.pol : ''}</span>`;
+    }
+    renderer.render(scene, cam); placeLabels(); requestAnimationFrame(loop);
+  }
+  go(0); requestAnimationFrame(loop);
+}
+}
+</script>
+</body></html>

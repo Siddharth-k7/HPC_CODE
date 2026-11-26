@@ -18,11 +18,16 @@
  * between tasks is done with rt_taskwait(), as in the BOTS benchmarks.
  *
  * Environment variables:
- *   OMP_DATA_DISTRIBUTION = standard | fine | coarse   (default standard)
+ *   OMP_DATA_DISTRIBUTION = standard | fine | coarse | adaptive (default standard)
  *   RT_SCHED              = ws | locality              (default ws)
  *   NUMA_NODES, NUMA_CORES_PER_NODE                    (set by gem5 config)
  *   RT_LLC_BYTES          last-level cache size of one node (default 384 KiB)
- *   RT_STEAL_DIST         hops | os | none  : "distance" used in Algorithm 2
+ *   RT_STEAL_DIST         hops | os | none | cost : rule used in Algorithm 2
+ *                         (cost = Improvement 1, NUMA cost-aware stealing)
+ *   RT_LAT_LOCAL, RT_LAT_HOP  memory latency model for "cost", in cycles
+ *                         (default 151 + 92 per hop, measured by the probe)
+ *   RT_PROFILE_OUT        file: write per-allocation task-access profile
+ *   RT_PROFILE_IN         file: profile read by OMP_DATA_DISTRIBUTION=adaptive
  *   RT_TRACE              file name: write a per-task CSV (thread timelines)
  */
 #ifndef NUMA_RT_H
@@ -39,8 +44,12 @@ extern "C" {
 typedef enum {
     RT_DIST_STANDARD = 0, /* leave it to the OS: first touch                */
     RT_DIST_FINE     = 1, /* pages round-robin over all nodes               */
-    RT_DIST_COARSE   = 2  /* whole allocation on one node, next allocation   */
+    RT_DIST_COARSE   = 2, /* whole allocation on one node, next allocation   */
                           /* on the next node (round-robin per allocation)  */
+    RT_DIST_ADAPTIVE = 3  /* Improvement 2: the runtime picks fine or coarse */
+                          /* per allocation from evidence (size rule +      */
+                          /* RT_PROFILE_IN). Never stored: each allocation  */
+                          /* ends up fine or coarse.                        */
 } rt_dist_t;
 
 /* omp_malloc in the paper: uses the global policy (OMP_DATA_DISTRIBUTION) */

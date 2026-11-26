@@ -152,6 +152,42 @@ PCIe copy dominates.
 
 ---
 
+### Improvements beyond the paper (`improvements_experiments.sh`)
+
+Two additions to the locality-aware scheduler. Both are new options, so the
+paper's behaviour is unchanged when they are off.
+
+**Improvement 1: NUMA cost-aware work stealing** (`RT_STEAL_DIST=cost`).
+The paper lets a node steal only if another queue holds more than
+distance x cores-per-node tasks, and it stops at the first such queue. With few
+tasks this leaves cores idle. The cost rule steals from node *i* when
+
+    backlog of node i  =  queued tasks x average task time / cores per node
+      >  extra memory time of the task on our node
+       =  sum over nodes j of  cache lines of its data on j x 92 x (our hops to j - i's hops to j)
+
+The average task time is measured by the runtime as it runs (until the first
+task finishes it falls back to the hop rule). A rejected task goes back to the
+tail of its queue and the search goes on to the next-nearest node. The 151 / 92
+cycle latency model comes from our latency probe (`RT_LAT_LOCAL`, `RT_LAT_HOP`).
+
+**Improvement 2: adaptive data distribution** (`OMP_DATA_DISTRIBUTION=adaptive`).
+Start from the baseline (fine). Switch an allocation to coarse only with evidence:
+- *size rule*: smaller than one page per node, so fine cannot spread it evenly;
+- *profile rule*: a profile run (`RT_PROFILE_OUT`) showed each task that uses
+  the allocation lists at least half of it (a task works on the whole block).
+
+Everything else stays fine. The profile records, per main-program allocation,
+how many tasks list it and how many bytes they list (`profiles/<bench>.prof`),
+and the real run reads it back with `RT_PROFILE_IN`. Pages are never moved:
+the choice is made when the allocation is created, so the gem5 NUMA patch is
+unchanged.
+
+Run everything with `bash improvements_experiments.sh`. Results go to
+`results_improvements/` (`IMPROVEMENTS_RESULTS.md`, `improvements.png`,
+`summary.csv`), with new configs `la-fine-cost`, `la-coarse-cost`,
+`la-adaptive` and `la-adaptive-cost`.
+
 ## 3. How the paper maps to the code
 
 | Paper | Our code |
